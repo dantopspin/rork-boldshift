@@ -246,8 +246,17 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                                 onPress={() => {
                                   setMood(m.value);
                                 }}
+                                // FIXED: flex: 1 moved to `style`, which targets the
+                                // outer Animated.View — the actual flex child of this
+                                // row. Previously it lived in `innerStyle`, which only
+                                // reaches the inner Pressable one level down. That inner
+                                // flex:1 was flexing inside its own isolated column
+                                // container and never propagated outward, so each pill
+                                // shrank to its own content width instead of claiming an
+                                // equal quarter of the row — leaving the dead space on
+                                // the right you saw in the screenshot.
+                                style={{ flex: 1 }}
                                 innerStyle={{
-                                  flex: 1,
                                   alignItems: "center",
                                   paddingVertical: 12,
                                   borderRadius: 14,
