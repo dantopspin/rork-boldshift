@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FREE_DAYS, TOTAL_DAYS } from "@/types";
 
 const STORAGE_KEY = "boldshift_subscription";
-export type Tier = "free" | "pro_monthly" | "pro_annual";
+export type Tier = "free" | "pro_monthly" | "pro_weekly";
 
 /**
  * Local-first subscription state. No backend validation — premium status is
@@ -19,7 +19,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((stored) => {
-        if (stored === "pro_monthly" || stored === "pro_annual" || stored === "free") {
+        if (stored === "pro_monthly" || stored === "pro_weekly" || stored === "free") {
           setTier(stored);
         }
       })
@@ -32,7 +32,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, []);
 
   const purchase = useCallback(
-    (plan: "pro_monthly" | "pro_annual"): void => {
+    (plan: "pro_monthly" | "pro_weekly"): void => {
       persist(plan);
       setShowPaywall(false);
       setShowPaywallAfterOnboarding(false);
