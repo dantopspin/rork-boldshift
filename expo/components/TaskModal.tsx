@@ -38,6 +38,20 @@ const MOODS: { value: Mood; icon: typeof Smile; color: string; label: string }[]
   { value: "hard", icon: Frown, color: "#E0483D", label: "Hard" },
 ];
 
+// FIXED: Fixed icon footprint, independent of the icon's own size prop.
+// Lucide icons don't share identical internal SVG bounding boxes — Heart,
+// Smile, Meh, and Frown each crop their glyph differently within their
+// viewBox. At the same numeric `size`, a face icon like Smile draws closer
+// to its own edges than Heart does, so the rendered circle appears larger.
+// On unselected pills this was invisible (just a thin grey border, no fill).
+// On the active pill — which gets a colored background tint sized to the
+// icon's true bounding box — the mismatch became visible as the icon
+// appearing to overflow the pill edge. Wrapping every icon in an identical
+// fixed-size, centered container normalizes the visual footprint regardless
+// of which glyph is used, so all four moods read as the same size.
+const ICON_BOX = 28;
+const ICON_SIZE = 22;
+
 const DIFFICULTY_LABEL: Record<string, string> = { easy: "Easy", medium: "Medium", hard: "Hard" };
 
 /**
@@ -202,7 +216,27 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                       <>
                         {/* Mood selector */}
                         <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>How did it feel?</Text>
-                        <View style={{ flexDirection: "row", gap: 8 }}>
+
+                        {/*
+                          FIXED: Row already shares the same paddingHorizontal: 22
+                          as "How did it feel?" above it (both live inside the same
+                          parent View), so its outer bounds already match the text's
+                          full width — no separate alignment fix needed there.
+
+                          What needed fixing was internal balance:
+                          - Each pill uses flex: 1 so all four divide the row's
+                            width evenly, edge to edge, with no leftover gap.
+                          - gap: 10 (up from 8) gives slightly more breathing room
+                            between pills now that each icon sits in a fixed,
+                            visually consistent box — matches the app's general
+                            preference for generous spacing over cramped rows.
+                          - Icon is wrapped in a fixed ICON_BOX × ICON_BOX container,
+                            centered, so Heart/Smile/Meh/Frown all read as the same
+                            visual size regardless of their individual SVG bounding
+                            boxes. This is what eliminates the overflow artifact on
+                            the active ("Good") pill from the original bug.
+                        */}
+                        <View style={{ flexDirection: "row", gap: 10 }}>
                           {MOODS.map((m) => {
                             const active = mood === m.value;
                             const MoodIcon = m.icon;
@@ -215,15 +249,24 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                                 innerStyle={{
                                   flex: 1,
                                   alignItems: "center",
-                                  paddingVertical: 10,
+                                  paddingVertical: 12,
                                   borderRadius: 14,
                                   borderWidth: 2,
                                   borderColor: active ? m.color : colors.border,
                                   backgroundColor: active ? m.color + "1A" : "transparent",
-                                  gap: 4,
+                                  gap: 6,
                                 }}
                               >
-                                <MoodIcon size={22} color={m.color} />
+                                <View
+                                  style={{
+                                    width: ICON_BOX,
+                                    height: ICON_BOX,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <MoodIcon size={ICON_SIZE} color={m.color} />
+                                </View>
                                 <Text style={{ color: active ? m.color : colors.mutedForeground, fontFamily: FONT.medium, fontSize: 11 }}>{m.label}</Text>
                               </PressableScale>
                             );
