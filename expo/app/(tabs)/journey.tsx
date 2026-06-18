@@ -12,7 +12,7 @@ import {
   Trophy,
 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
-import { Animated, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AnimatedProgressBar from "@/components/AnimatedProgressBar";
 import BonusChallengeCard from "@/components/BonusChallengeCard";
@@ -24,7 +24,6 @@ import { ACCENT, FONT, GOLD_GRADIENT, PATH_THEME } from "@/constants/theme";
 import { getChallengesForPath } from "@/data/challenges";
 import { getDailyBonusChallenge } from "@/data/bonusChallenges";
 import { getDailyQuote } from "@/data/quotes";
-import { getCurrentLevel } from "@/data/xpLevels";
 import { getWeekForDay, WEEK_THEMES } from "@/data/weekThemes";
 import { triggerHaptic } from "@/lib/haptics";
 import { useProgress } from "@/providers/ProgressProvider";
@@ -58,7 +57,6 @@ export default function Dashboard() {
 
   const challenges = useMemo(() => (path ? getChallengesForPath(path) : []), [path]);
   const totalXP = getTotalXP();
-  const currentLevel = getCurrentLevel(totalXP);
   const dailyQuote = useMemo(() => getDailyQuote(path), [path]);
   const dailyBonus = useMemo(() => getDailyBonusChallenge(), []);
   const bonusDone = isBonusChallengeCompleted(dailyBonus.id);
@@ -139,7 +137,35 @@ export default function Dashboard() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
-          {/* Yesterday check-in */}
+          {/* Streak warning — today's urgency first */}
+          {streakAtRisk && (
+            <GlassCard style={{ padding: 14 }} borderColor={ACCENT.streak + "33"}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <AlertTriangle size={20} color={ACCENT.streak} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13 }}>
+                    Don't break your {progress.streak}-day streak! 🔥
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>
+                    One small action today keeps it alive
+                  </Text>
+                </View>
+                {progress.streakFreezes > 0 && (
+                  <PressableScale
+                    onPress={() => {
+                      useStreakFreeze();
+                    }}
+                    haptic="medium"
+                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: ACCENT.cyan + "88" }}
+                  >
+                    <Text style={{ color: ACCENT.cyan, fontFamily: FONT.bold, fontSize: 12 }}>❄ Freeze</Text>
+                  </PressableScale>
+                )}
+              </View>
+            </GlassCard>
+          )}
+
+          {/* Yesterday check-in — retroactive, lower urgency */}
           {shouldShowCheckIn() && (
             <GlassCard style={{ padding: 14 }} borderColor={ACCENT.success + "44"}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -172,34 +198,6 @@ export default function Dashboard() {
             </GlassCard>
           )}
 
-          {/* Streak warning */}
-          {streakAtRisk && (
-            <GlassCard style={{ padding: 14 }} borderColor={ACCENT.streak + "33"}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <AlertTriangle size={20} color={ACCENT.streak} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13 }}>
-                    Don't break your {progress.streak}-day streak! 🔥
-                  </Text>
-                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>
-                    One small action today keeps it alive
-                  </Text>
-                </View>
-                {progress.streakFreezes > 0 && (
-                  <PressableScale
-                    onPress={() => {
-                      useStreakFreeze();
-                    }}
-                    haptic="medium"
-                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: ACCENT.cyan + "88" }}
-                  >
-                    <Text style={{ color: ACCENT.cyan, fontFamily: FONT.bold, fontSize: 12 }}>❄ Freeze</Text>
-                  </PressableScale>
-                )}
-              </View>
-            </GlassCard>
-          )}
-
           {/* Daily quote */}
           <GlassCard style={{ padding: 16 }}>
             <View style={{ flexDirection: "row", gap: 12 }}>
@@ -213,10 +211,7 @@ export default function Dashboard() {
             </View>
           </GlassCard>
 
-          {/* Bonus challenge */}
-          <BonusChallengeCard challenge={dailyBonus} isCompleted={bonusDone} pathType={path} onComplete={() => completeBonusChallenge(dailyBonus.id)} />
-
-          {/* Milestone progress */}
+          {/* Milestone progress — primary journey tracker */}
           <GlassCard style={{ padding: 16 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -230,6 +225,9 @@ export default function Dashboard() {
               {nextMilestone - progress.completedDays.length} days to go!
             </Text>
           </GlassCard>
+
+          {/* Bonus challenge — secondary action, below primary tracker */}
+          <BonusChallengeCard challenge={dailyBonus} isCompleted={bonusDone} pathType={path} onComplete={() => completeBonusChallenge(dailyBonus.id)} />
 
           {/* Free user banner */}
           {!isPro && (
