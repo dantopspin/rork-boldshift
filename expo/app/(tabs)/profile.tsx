@@ -138,19 +138,6 @@ export default function Profile() {
           </View>
         </GlassCard>
 
-        {/* Current path */}
-        <GlassCard style={{ padding: 16 }} borderColor={theme.color + "4D"}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <LinearGradient colors={theme.gradient} style={{ width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" }}>
-              <CurrentIcon size={20} color="#FFF" />
-            </LinearGradient>
-            <View>
-              <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12 }}>Current Path</Text>
-              <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 15 }}>{theme.label}</Text>
-            </View>
-          </View>
-        </GlassCard>
-
         {/* XP / Level */}
         <GlassCard style={{ padding: 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -177,7 +164,7 @@ export default function Profile() {
         </GlassCard>
 
         {/* Settings */}
-        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.bold, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 6 }}>Settings</Text>
+        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.bold, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 20 }}>Settings</Text>
         <GlassCard style={{ padding: 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -197,7 +184,7 @@ export default function Profile() {
         </GlassCard>
 
         {/* Journey actions */}
-        <GlassCard style={{ padding: 16, gap: 10 }}>
+        <GlassCard style={{ padding: 16 }}>
           <PressableScale
             onPress={handleSwitchPath}
             innerStyle={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 6 }}
@@ -209,7 +196,10 @@ export default function Profile() {
             </View>
             <ChevronRight size={18} color={colors.mutedForeground} />
           </PressableScale>
-          <View style={{ height: 1, backgroundColor: colors.border }} />
+        </GlassCard>
+
+        {/* Reset — isolated to signal its destructive weight */}
+        <GlassCard style={{ padding: 16 }}>
           <PressableScale onPress={confirmReset} haptic="warning" innerStyle={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 }}>
             <RotateCcw size={18} color={colors.destructive} />
             <Text style={{ color: colors.destructive, fontFamily: FONT.medium, fontSize: 14 }}>Reset Progress</Text>
