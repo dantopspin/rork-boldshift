@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   AlertTriangle,
+  CheckCircle,
   ChevronDown,
   Crown,
   Flame,
@@ -43,6 +44,9 @@ export default function Dashboard() {
     getTotalXP,
     canCompleteMainChallenge,
     useStreakFreeze,
+    shouldShowCheckIn,
+    confirmYesterdayComplete,
+    dismissCheckIn,
   } = useProgress();
   const { isPro, maxDays } = useSubscription();
 
@@ -135,6 +139,39 @@ export default function Dashboard() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: 20, gap: 12 }}>
+          {/* Yesterday check-in */}
+          {shouldShowCheckIn() && (
+            <GlassCard style={{ padding: 14 }} borderColor={ACCENT.success + "44"}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <CheckCircle size={20} color={ACCENT.success} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13 }}>
+                    Did you complete yesterday's challenge?
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>
+                    Confirm to keep your streak alive
+                  </Text>
+                </View>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <PressableScale
+                    onPress={() => { triggerHaptic("success"); confirmYesterdayComplete(); }}
+                    haptic={false}
+                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: ACCENT.success + "22", borderWidth: 1, borderColor: ACCENT.success + "66" }}
+                  >
+                    <Text style={{ color: ACCENT.success, fontFamily: FONT.bold, fontSize: 12 }}>Yes</Text>
+                  </PressableScale>
+                  <PressableScale
+                    onPress={() => { triggerHaptic("light"); dismissCheckIn(); }}
+                    haptic={false}
+                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.border }}
+                  >
+                    <Text style={{ color: colors.mutedForeground, fontFamily: FONT.bold, fontSize: 12 }}>No</Text>
+                  </PressableScale>
+                </View>
+              </View>
+            </GlassCard>
+          )}
+
           {/* Streak warning */}
           {streakAtRisk && (
             <GlassCard style={{ padding: 14 }} borderColor={ACCENT.streak + "33"}>
