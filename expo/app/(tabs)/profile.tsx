@@ -123,7 +123,7 @@ export default function Profile() {
               <View>
                 <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12 }}>Subscription</Text>
                 <Text style={{ color: isPro ? ACCENT.milestone : colors.foreground, fontFamily: FONT.bold, fontSize: 15 }}>
-                  {isPro ? `BoldShift Pro${tier === "pro_annual" ? " · Annual" : ""}` : "Free Plan"}
+                  {isPro ? `BoldShift Pro${tier === "pro_weekly" ? " · Weekly" : " · Monthly"}` : "Free Plan"}
                 </Text>
               </View>
             </View>
