@@ -4,27 +4,34 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_PROGRESS,
   DifficultyPreference,
+  FREE_DAYS,
   Mood,
   PathType,
   SocialFear,
   SocialGoal,
+  TOTAL_DAYS,
   UserProgress,
 } from "@/types";
 import { getUnlockedAchievements } from "@/data/achievements";
+import { useSubscription } from "@/providers/SubscriptionProvider";
 
 const STORAGE_KEY = "boldshift_progress";
 const FLAGS_KEY = "boldshift_flags";
 
-const todayStr = (): string => new Date().toISOString().split("T")[0];
+const todayStr = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 const yesterdayStr = (): string => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().split("T")[0];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 export const [ProgressProvider, useProgress] = createContextHook(() => {
   const [progress, setProgress] = useState<UserProgress>(DEFAULT_PROGRESS);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const { isPro } = useSubscription();
 
   // Load persisted progress
   useEffect(() => {
@@ -60,15 +67,16 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     }
   }, [progress, isLoaded]);
 
-  // Monthly streak-freeze reset
+  // Monthly streak-freeze reset — pro users get advanced protection (5 freezes/mo)
   useEffect(() => {
     if (!isLoaded) return;
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${now.getMonth()}`;
     if (progress.lastFreezeReset !== currentMonth) {
-      setProgress((prev) => ({ ...prev, streakFreezes: 2, lastFreezeReset: currentMonth }));
+      const freezeCount = isPro ? 5 : 2;
+      setProgress((prev) => ({ ...prev, streakFreezes: freezeCount, lastFreezeReset: currentMonth }));
     }
-  }, [isLoaded, progress.lastFreezeReset]);
+  }, [isLoaded, progress.lastFreezeReset, isPro]);
 
   const checkAchievements = useCallback((updated: UserProgress): string[] => {
     const newUnlocked = getUnlockedAchievements({
@@ -110,6 +118,8 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
 
   const completeDay = useCallback(
     (day: number, reflection?: { text: string; mood: Mood }): void => {
+      const maxAllowed = isPro ? TOTAL_DAYS : FREE_DAYS;
+      if (day > maxAllowed) return;
       const today = todayStr();
       setProgress((prev) => {
         if (prev.completedDays.includes(day)) return prev;
@@ -122,14 +132,14 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
         }
         const newCompletedDays = [...prev.completedDays, day].sort((a, b) => a - b);
         const nextIncompleteDay =
-          Array.from({ length: 60 }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? 60;
+          Array.from({ length: maxAllowed }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? maxAllowed;
         const newReflections = reflection
           ? { ...prev.reflections, [day]: { ...reflection, timestamp: new Date().toISOString() } }
           : prev.reflections;
         const updated: UserProgress = {
           ...prev,
           completedDays: newCompletedDays,
-          currentDay: Math.max(nextIncompleteDay, prev.currentDay),
+          currentDay: Math.max(Math.min(nextIncompleteDay, maxAllowed), prev.currentDay),
           streak: newStreak,
           longestStreak: Math.max(newStreak, prev.longestStreak),
           lastCompletedDate: today,
@@ -139,7 +149,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
         return { ...updated, unlockedAchievements: checkAchievements(updated) };
       });
     },
-    [checkAchievements],
+    [checkAchievements, isPro],
   );
 
   const useStreakFreeze = useCallback((): void => {

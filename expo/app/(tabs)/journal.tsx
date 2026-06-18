@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { BookOpen, Check, ChevronDown, Frown, Heart, Meh, Smile } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
-import { Alert, Modal, ScrollView, Text, TextInput, TouchableWithoutFeedback, View, Keyboard } from "react-native";
+import { Alert, InputAccessoryView, Modal, ScrollView, Text, TextInput, TouchableWithoutFeedback, View, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "@/components/AppButton";
 import GlassCard from "@/components/GlassCard";
@@ -207,7 +207,8 @@ export default function Journal() {
                   placeholderTextColor={colors.mutedForeground}
                   multiline
                   returnKeyType="done"
-                  submitBehavior="blurAndSubmit"
+                  blurOnSubmit={true}
+                  inputAccessoryViewID="journalEditInput"
                   style={{
                     minHeight: 100,
                     borderRadius: 14,
@@ -221,6 +222,13 @@ export default function Journal() {
                     textAlignVertical: "top",
                   }}
                 />
+                <InputAccessoryView nativeID="journalEditInput">
+                  <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.cardSolid, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    <PressableScale onPress={() => Keyboard.dismiss()} innerStyle={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+                      <Text style={{ color: colors.primary, fontFamily: FONT.bold, fontSize: 14 }}>Done</Text>
+                    </PressableScale>
+                  </View>
+                </InputAccessoryView>
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <PressableScale
                     onPress={() => { setEditDay(null); setEditText(""); }}
