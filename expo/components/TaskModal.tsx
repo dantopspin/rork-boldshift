@@ -3,7 +3,6 @@ import { Check, Frown, Heart, Meh, Smile, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  InputAccessoryView,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -292,8 +291,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                           placeholderTextColor={colors.mutedForeground}
                           multiline
                           returnKeyType="done"
-                          blurOnSubmit={true}
-                          inputAccessoryViewID="taskModalInput"
+                          submitBehavior="blurAndSubmit"
                           style={{
                             height: 72,
                             borderRadius: 14,
@@ -307,13 +305,6 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                             textAlignVertical: "top",
                           }}
                         />
-                        <InputAccessoryView nativeID="taskModalInput">
-                          <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.cardSolid, borderTopWidth: 1, borderTopColor: colors.border }}>
-                            <PressableScale onPress={() => Keyboard.dismiss()} innerStyle={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-                              <Text style={{ color: colors.primary, fontFamily: FONT.bold, fontSize: 14 }}>Done</Text>
-                            </PressableScale>
-                          </View>
-                        </InputAccessoryView>
 
                         {/* CTA */}
                         <AppButton

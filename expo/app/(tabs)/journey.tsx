@@ -10,12 +10,11 @@ import {
   Sparkles,
   Trophy,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Keyboard, ScrollView, Text, TouchableWithoutFeedback, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { Animated, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AnimatedProgressBar from "@/components/AnimatedProgressBar";
 import BonusChallengeCard from "@/components/BonusChallengeCard";
-import ConfettiOverlay from "@/components/ConfettiOverlay";
 import GlassCard from "@/components/GlassCard";
 import PathNode from "@/components/PathNode";
 import PressableScale from "@/components/PressableScale";
@@ -32,8 +31,6 @@ import { useSubscription } from "@/providers/SubscriptionProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Challenge, FREE_DAYS, MILESTONES, Mood, NodeStatus } from "@/types";
 
-const CONFETTI_MILESTONES = new Set([1, 7, 14, 21, 30, 45, 60]);
-
 export default function Dashboard() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -47,23 +44,10 @@ export default function Dashboard() {
     canCompleteMainChallenge,
     useStreakFreeze,
   } = useProgress();
-  const { isPro, maxDays, showPaywallAfterOnboarding, setShowPaywallAfterOnboarding } = useSubscription();
+  const { isPro, maxDays } = useSubscription();
 
   const [selected, setSelected] = useState<Challenge | null>(null);
   const [collapsedWeeks, setCollapsedWeeks] = useState<number[]>([]);
-  const [showConfetti, setShowConfetti] = useState<boolean>(false);
-
-  // Show paywall after onboarding for free users — exactly once
-  const paywallShownRef = useRef<boolean>(false);
-  useEffect(() => {
-    if (showPaywallAfterOnboarding && !paywallShownRef.current && !isPro) {
-      paywallShownRef.current = true;
-      setShowPaywallAfterOnboarding(false);
-      // Small delay so the journey screen renders first, then the modal animates in
-      const t = setTimeout(() => router.push("/paywall"), 400);
-      return () => clearTimeout(t);
-    }
-  }, [showPaywallAfterOnboarding, isPro, router, setShowPaywallAfterOnboarding]);
 
   const path = progress.selectedPath;
   const theme = path ? PATH_THEME[path] : PATH_THEME.introvert;
@@ -85,9 +69,9 @@ export default function Dashboard() {
 
   const getNodeStatus = useCallback(
     (day: number): NodeStatus => {
-      if (!isPro && day > FREE_DAYS) return "pro-locked";
       if (progress.completedDays.includes(day)) return "completed";
       if (day === progress.currentDay) return "current";
+      if (!isPro && day > FREE_DAYS) return "pro-locked";
       return "locked";
     },
     [progress.completedDays, progress.currentDay, isPro],
@@ -115,9 +99,6 @@ export default function Dashboard() {
   const handleComplete = (reflection: { text: string; mood: Mood }): void => {
     if (selected) {
       completeDay(selected.day, reflection);
-      if (CONFETTI_MILESTONES.has(selected.day)) {
-        setShowConfetti(true);
-      }
       setSelected(null);
     }
   };
@@ -314,12 +295,6 @@ export default function Dashboard() {
         pathType={path}
         onClose={() => setSelected(null)}
         onComplete={handleComplete}
-      />
-
-      {/* Confetti celebration for milestone days */}
-      <ConfettiOverlay
-        visible={showConfetti}
-        onFinish={() => setShowConfetti(false)}
       />
     </View>
   );
