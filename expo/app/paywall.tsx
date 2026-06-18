@@ -80,14 +80,14 @@ export default function Paywall() {
               onPress={() => { triggerHaptic("light"); setPlan("pro_monthly"); }}
               title="Monthly"
               price="$14.99/mo"
-              subtitle="Just $3.70/mo · Best value"
-              badge="SAVE 25%"
+              subtitle="Best value"
+              badge="POPULAR"
             />
             <PlanOption
               active={plan === "pro_weekly"}
-              onPress={() => { setPlan("pro_weekly"); }}
+              onPress={() => { triggerHaptic("light"); setPlan("pro_weekly"); }}
               title="Weekly"
-              price="$4.99/w"
+              price="$4.99/wk"
               subtitle="Billed weekly"
             />
           </View>
