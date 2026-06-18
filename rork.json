@@ -1,0 +1,14 @@
+{
+  "$schema": "https://rork.com/schema/rork.json",
+  "apps": [
+    {
+      "name": "BoldShift",
+      "path": "expo",
+      "framework": "react-native",
+      "settings": {
+        "iosBundleId": "app.rork.boldshiftapp",
+        "androidPackage": "app.rork.boldshiftapp"
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+[submodule "boldshift"]
+	path = boldshift
+	url = https://github.com/dantopspin/boldshift.git
+	branch = main
