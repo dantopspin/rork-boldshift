@@ -11,6 +11,7 @@ import {
   UserProgress,
 } from "@/types";
 import { getUnlockedAchievements } from "@/data/achievements";
+import { getChallengesForPath } from "@/data/challenges";
 
 const STORAGE_KEY = "boldshift_progress";
 const FLAGS_KEY = "boldshift_flags";
@@ -33,12 +34,20 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored) as Partial<UserProgress>;
+          // Prune bonus challenge entries older than 7 days to keep the array bounded
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - 7);
+          const cutoffStr = cutoff.toISOString().split("T")[0];
+          const prunedBonuses = (parsed.completedBonusChallenges ?? []).filter((key) => {
+            const datePart = key.split("_").pop();
+            return datePart !== undefined && datePart >= cutoffStr;
+          });
           setProgress({
             ...DEFAULT_PROGRESS,
             ...parsed,
             streakFreezes: parsed.streakFreezes ?? 2,
             unlockedAchievements: parsed.unlockedAchievements ?? [],
-            completedBonusChallenges: parsed.completedBonusChallenges ?? [],
+            completedBonusChallenges: prunedBonuses,
             reflections: parsed.reflections ?? {},
           });
         }
@@ -115,8 +124,10 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
         if (prev.completedDays.includes(day)) return prev;
         const yStr = yesterdayStr();
         let newStreak: number;
-        if (prev.lastCompletedDate === yStr || prev.lastCompletedDate === today) {
+        if (prev.lastCompletedDate === yStr) {
           newStreak = prev.streak + 1;
+        } else if (prev.lastCompletedDate === today) {
+          newStreak = prev.streak; // same day — keep streak, don't increment
         } else {
           newStreak = 1;
         }
@@ -208,10 +219,15 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     });
   }, []);
 
-  const getTotalXP = useCallback(
-    (): number => progress.completedDays.length * 10 + progress.completedBonusChallenges.length * 5,
-    [progress.completedDays.length, progress.completedBonusChallenges.length],
-  );
+  const getTotalXP = useCallback((): number => {
+    const challenges = progress.selectedPath ? getChallengesForPath(progress.selectedPath) : [];
+    const mainXP = progress.completedDays.reduce((acc, day) => {
+      const challenge = challenges.find((c) => c.day === day);
+      return acc + (challenge?.xpReward ?? 10);
+    }, 0);
+    const bonusXP = progress.completedBonusChallenges.length * 5;
+    return mainXP + bonusXP;
+  }, [progress.selectedPath, progress.completedDays, progress.completedBonusChallenges.length]);
 
   const shouldShowCheckIn = useCallback((): boolean => {
     if (!progress.selectedPath || !progress.lastCompletedDate) return false;
@@ -229,6 +245,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
 
   const confirmYesterdayComplete = useCallback((): void => {
     const today = todayStr();
+    const yStr = yesterdayStr();
     const yesterdayDay = getYesterdayDay();
     setProgress((prev) => {
       const newCompletedDays = prev.completedDays.includes(yesterdayDay)
@@ -236,10 +253,16 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
         : [...prev.completedDays, yesterdayDay].sort((a, b) => a - b);
       const nextIncompleteDay =
         Array.from({ length: 60 }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? 60;
+      // Recalculate streak: yesterday was completed, today is now the continuation point
+      const newStreak = prev.lastCompletedDate === yStr || prev.lastCompletedDate === today
+        ? prev.streak + 1
+        : 1;
       const updated: UserProgress = {
         ...prev,
         completedDays: newCompletedDays,
         currentDay: Math.max(nextIncompleteDay, prev.currentDay),
+        streak: newStreak,
+        longestStreak: Math.max(newStreak, prev.longestStreak),
         lastCompletedDate: today,
         checkInDismissedDate: today,
         lastVisitDate: today,
