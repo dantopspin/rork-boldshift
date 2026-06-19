@@ -6,17 +6,18 @@ import {
   ChevronDown,
   Crown,
   Flame,
+  Gift,
   Lock,
   Quote as QuoteIcon,
   Sparkles,
   Trophy,
+  Zap,
 } from "lucide-react-native";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AnimatedProgressBar from "@/components/AnimatedProgressBar";
 import BonusChallengeCard from "@/components/BonusChallengeCard";
-import ConfettiOverlay from "@/components/ConfettiOverlay";
 import GlassCard from "@/components/GlassCard";
 import PathNode from "@/components/PathNode";
 import PressableScale from "@/components/PressableScale";
@@ -32,8 +33,8 @@ import { useSubscription } from "@/providers/SubscriptionProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Challenge, FREE_DAYS, MILESTONES, Mood, NodeStatus } from "@/types";
 
-/** Days that trigger a confetti celebration when completed. */
-const CELEBRATION_DAYS = new Set([1, 7, 14, 21, 30, 45, 60]);
+const GREETINGS = ["Let's grow today", "Keep the momentum", "One step further", "You've got this"];
+const getDailyGreeting = () => GREETINGS[new Date().getDay() % GREETINGS.length];
 
 export default function Dashboard() {
   const router = useRouter();
@@ -55,10 +56,6 @@ export default function Dashboard() {
 
   const [selected, setSelected] = useState<Challenge | null>(null);
   const [collapsedWeeks, setCollapsedWeeks] = useState<number[]>([]);
-
-  // Confetti
-  const [showConfetti, setShowConfetti] = useState<boolean>(false);
-  const lastConfettiKey = useRef<string>("");
 
   const path = progress.selectedPath;
   const theme = path ? PATH_THEME[path] : PATH_THEME.introvert;
@@ -96,8 +93,9 @@ export default function Dashboard() {
     () =>
       WEEK_THEMES.map((w) => {
         const wChallenges = challenges.filter((c) => c.day >= w.startDay && c.day <= w.endDay);
-        const isCompleted = wChallenges.every((c) => progress.completedDays.includes(c.day));
-        return { ...w, challenges: wChallenges, isCompleted };
+        const completedCount = wChallenges.filter((c) => progress.completedDays.includes(c.day)).length;
+        const isCompleted = wChallenges.length > 0 && completedCount === wChallenges.length;
+        return { ...w, challenges: wChallenges, isCompleted, completedCount };
       }),
     [challenges, progress.completedDays],
   );
@@ -108,25 +106,9 @@ export default function Dashboard() {
 
   const handleComplete = (reflection: { text: string; mood: Mood }): void => {
     if (selected) {
-      const day = selected.day;
-      completeDay(day, reflection);
-
-      // Trigger confetti if this is a celebration day
-      if (CELEBRATION_DAYS.has(day)) {
-        const key = `milestone-${day}-${Date.now()}`;
-        lastConfettiKey.current = key;
-        setShowConfetti(true);
-      }
+      completeDay(selected.day, reflection);
       setSelected(null);
     }
-  };
-
-  const handleBonusComplete = (): void => {
-    completeBonusChallenge(dailyBonus.id);
-    // Confetti for bonus XP
-    const key = `bonus-${dailyBonus.id}-${Date.now()}`;
-    lastConfettiKey.current = key;
-    setShowConfetti(true);
   };
 
   const currentWeek = getWeekForDay(progress.currentDay);
@@ -135,52 +117,71 @@ export default function Dashboard() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient colors={colors.backgroundGradient} style={{ position: "absolute", inset: 0 }} />
 
-      {/* Sticky header */}
+      {/* ── Header ── */}
       <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-        <View style={{ paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <View>
-              <Text style={{ color: colors.foreground, fontFamily: FONT.extrabold, fontSize: 26 }}>Day {progress.currentDay}</Text>
-              <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 13 }}>
-                {progress.completedDays.length}/{maxDays} completed{!isPro ? " (Free)" : ""}
+        <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+            {/* Left: greeting + path */}
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 13, marginBottom: 2 }}>
+                {getDailyGreeting()}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={{ color: colors.foreground, fontFamily: FONT.extrabold, fontSize: 24 }}>
+                  Day {progress.currentDay}
+                </Text>
+                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: theme.color + "22" }}>
+                  <Text style={{ color: theme.color, fontFamily: FONT.bold, fontSize: 11 }}>
+                    {theme.label}
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 1 }}>
+                {progress.completedDays.length}/{maxDays} completed{!isPro ? " · Free" : ""}
               </Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <LinearGradient colors={GOLD_GRADIENT} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 13, paddingVertical: 8, borderRadius: 999 }}>
-                <Sparkles size={15} color="#FFF" />
+
+            {/* Right: XP + streak */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <LinearGradient
+                colors={GOLD_GRADIENT}
+                style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999 }}
+              >
+                <Zap size={13} color="#FFF" />
                 <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 13 }}>{totalXP}</Text>
               </LinearGradient>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 13, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.glassBorder }}>
-                <Flame size={18} color={ACCENT.streak} />
-                <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>{progress.streak}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: ACCENT.streak + "1A", borderWidth: 1, borderColor: ACCENT.streak + "44" }}>
+                <Flame size={15} color={ACCENT.streak} />
+                <Text style={{ color: ACCENT.streak, fontFamily: FONT.bold, fontSize: 13 }}>{progress.streak}</Text>
               </View>
             </View>
           </View>
         </View>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
-        <View style={{ paddingHorizontal: 20, gap: 12 }}>
-          {/* Streak warning — today's urgency first */}
+      <ScrollView contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingHorizontal: 20, gap: 10 }}>
+
+          {/* ── Streak warning ── */}
           {streakAtRisk && (
-            <GlassCard style={{ padding: 14 }} borderColor={ACCENT.streak + "33"}>
+            <GlassCard style={{ padding: 14 }} borderColor={ACCENT.streak + "44"}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <AlertTriangle size={20} color={ACCENT.streak} />
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: ACCENT.streak + "1A", alignItems: "center", justifyContent: "center" }}>
+                  <AlertTriangle size={18} color={ACCENT.streak} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13 }}>
-                    Don't break your {progress.streak}-day streak! 🔥
+                    {progress.streak}-day streak at risk 🔥
                   </Text>
-                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>
-                    One small action today keeps it alive
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 1 }}>
+                    Complete today's challenge to keep it alive
                   </Text>
                 </View>
                 {progress.streakFreezes > 0 && (
                   <PressableScale
-                    onPress={() => {
-                      useStreakFreeze();
-                    }}
+                    onPress={() => useStreakFreeze()}
                     haptic="medium"
-                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: ACCENT.cyan + "88" }}
+                    innerStyle={{ paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: ACCENT.cyan + "66", backgroundColor: ACCENT.cyan + "11" }}
                   >
                     <Text style={{ color: ACCENT.cyan, fontFamily: FONT.bold, fontSize: 12 }}>❄ Freeze</Text>
                   </PressableScale>
@@ -189,31 +190,33 @@ export default function Dashboard() {
             </GlassCard>
           )}
 
-          {/* Yesterday check-in — retroactive, lower urgency */}
+          {/* ── Yesterday check-in ── */}
           {shouldShowCheckIn() && (
             <GlassCard style={{ padding: 14 }} borderColor={ACCENT.success + "44"}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <CheckCircle size={20} color={ACCENT.success} />
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: ACCENT.success + "1A", alignItems: "center", justifyContent: "center" }}>
+                  <CheckCircle size={18} color={ACCENT.success} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13 }}>
-                    Did you complete yesterday's challenge?
+                    Did you do yesterday's challenge?
                   </Text>
-                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 1 }}>
                     Confirm to keep your streak alive
                   </Text>
                 </View>
-                <View style={{ flexDirection: "row", gap: 8 }}>
+                <View style={{ flexDirection: "row", gap: 6 }}>
                   <PressableScale
                     onPress={() => { triggerHaptic("success"); confirmYesterdayComplete(); }}
                     haptic={false}
-                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: ACCENT.success + "22", borderWidth: 1, borderColor: ACCENT.success + "66" }}
+                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: ACCENT.success + "22", borderWidth: 1, borderColor: ACCENT.success + "55" }}
                   >
                     <Text style={{ color: ACCENT.success, fontFamily: FONT.bold, fontSize: 12 }}>Yes</Text>
                   </PressableScale>
                   <PressableScale
                     onPress={() => { triggerHaptic("light"); dismissCheckIn(); }}
                     haptic={false}
-                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.border }}
+                    innerStyle={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: colors.border }}
                   >
                     <Text style={{ color: colors.mutedForeground, fontFamily: FONT.bold, fontSize: 12 }}>No</Text>
                   </PressableScale>
@@ -222,55 +225,81 @@ export default function Dashboard() {
             </GlassCard>
           )}
 
-          {/* Daily quote */}
-          <GlassCard style={{ padding: 16 }}>
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <QuoteIcon size={16} color={colors.mutedForeground} style={{ marginTop: 2 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.foreground, fontFamily: FONT.regular, fontSize: 14, fontStyle: "italic", lineHeight: 21 }}>
-                  "{dailyQuote.text}"
-                </Text>
-                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 12, marginTop: 6 }}>— {dailyQuote.author}</Text>
+          {/* ── Daily quote ── */}
+          <GlassCard style={{ padding: 0, overflow: "hidden" }}>
+            <View style={{ flexDirection: "row" }}>
+              {/* Accent strip */}
+              <View style={{ width: 4, backgroundColor: theme.color + "88" }} />
+              <View style={{ flex: 1, padding: 14 }}>
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                  <QuoteIcon size={14} color={theme.color} style={{ marginTop: 3, opacity: 0.7 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 13, lineHeight: 20 }}>
+                      {dailyQuote.text}
+                    </Text>
+                    <Text style={{ color: theme.color, fontFamily: FONT.bold, fontSize: 11, marginTop: 6, opacity: 0.8 }}>
+                      — {dailyQuote.author}
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
           </GlassCard>
 
-          {/* Milestone progress — primary journey tracker */}
-          <GlassCard style={{ padding: 16 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          {/* ── Milestone progress ── */}
+          <GlassCard style={{ padding: 16 }} borderColor={theme.color + "22"}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Trophy size={16} color={ACCENT.milestone} />
-                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>Next milestone</Text>
+                <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: ACCENT.milestone + "22", alignItems: "center", justifyContent: "center" }}>
+                  <Trophy size={15} color={ACCENT.milestone} />
+                </View>
+                <View>
+                  <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>
+                    Next milestone
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11 }}>
+                    {nextMilestone - progress.completedDays.length} days to go
+                  </Text>
+                </View>
               </View>
-              <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 13 }}>Day {nextMilestone}</Text>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={{ color: ACCENT.milestone, fontFamily: FONT.extrabold, fontSize: 20 }}>
+                  {progress.completedDays.length}
+                </Text>
+                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11 }}>
+                  of {nextMilestone}
+                </Text>
+              </View>
             </View>
-            <AnimatedProgressBar progress={progressPercent} color={theme.color} trackColor={colors.secondary} />
-            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 8 }}>
-              {nextMilestone - progress.completedDays.length} days to go!
-            </Text>
+            <AnimatedProgressBar progress={progressPercent} color={theme.color} trackColor={colors.secondary} height={7} />
           </GlassCard>
 
-          {/* Bonus challenge — secondary action, below primary tracker */}
+          {/* ── Bonus challenge ── */}
           <BonusChallengeCard
             challenge={dailyBonus}
             isCompleted={bonusDone}
             pathType={path}
-            onComplete={handleBonusComplete}
+            onComplete={() => completeBonusChallenge(dailyBonus.id)}
           />
 
-          {/* Free user banner */}
+          {/* ── Free user upgrade banner ── */}
           {!isPro && (
             <PressableScale onPress={() => router.push("/paywall")} haptic="medium">
-              <GlassCard style={{ padding: 16 }} borderColor={ACCENT.milestone + "33"}>
+              <LinearGradient
+                colors={[ACCENT.milestone + "22", ACCENT.speaking + "11"]}
+                style={{ borderRadius: 16, borderWidth: 1, borderColor: ACCENT.milestone + "44", padding: 16 }}
+              >
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
-                    <LinearGradient colors={[ACCENT.milestone, ACCENT.speaking]} style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" }}>
-                      <Lock size={18} color="#FFF" />
-                    </LinearGradient>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT.milestone + "33", alignItems: "center", justifyContent: "center" }}>
+                      <Lock size={18} color={ACCENT.milestone} />
+                    </View>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>Days 16–60</Text>
-                        <Crown size={14} color={ACCENT.milestone} />
+                        <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>
+                          Unlock Days 16–60
+                        </Text>
+                        <Crown size={13} color={ACCENT.milestone} />
                       </View>
                       <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>
                         {Math.min(progress.completedDays.length, 15)}/15 free days used
@@ -278,22 +307,24 @@ export default function Dashboard() {
                     </View>
                   </View>
                   <LinearGradient colors={GOLD_GRADIENT} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 }}>
-                    <Sparkles size={14} color="#FFF" />
-                    <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 13 }}>Unlock</Text>
+                    <Sparkles size={13} color="#FFF" />
+                    <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 13 }}>Go Pro</Text>
                   </LinearGradient>
                 </View>
-              </GlassCard>
+              </LinearGradient>
             </PressableScale>
           )}
         </View>
 
-        {/* Weeks + nodes */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
+        {/* ── Week sections ── */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 20, gap: 14 }}>
           {challengesByWeek.map((week) => {
             const collapsed = collapsedWeeks.includes(week.week);
             const isCurrentWeek = currentWeek?.week === week.week;
+
             return (
-              <View key={week.week} style={{ marginBottom: 18 }}>
+              <View key={week.week}>
+                {/* Week header */}
                 <PressableScale
                   onPress={() => week.isCompleted && toggleWeek(week.week)}
                   innerStyle={{
@@ -301,36 +332,66 @@ export default function Dashboard() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     paddingHorizontal: 14,
-                    paddingVertical: 12,
-                    borderRadius: 16,
-                    backgroundColor: colors.card,
+                    paddingVertical: 11,
+                    borderRadius: 14,
+                    backgroundColor: isCurrentWeek && !week.isCompleted
+                      ? theme.color + "14"
+                      : week.isCompleted
+                        ? ACCENT.milestone + "11"
+                        : colors.card,
                     borderWidth: 1,
-                    borderColor: isCurrentWeek && !week.isCompleted ? theme.color + "80" : colors.glassBorder,
-                    marginBottom: 12,
+                    borderColor: isCurrentWeek && !week.isCompleted
+                      ? theme.color + "55"
+                      : week.isCompleted
+                        ? ACCENT.milestone + "44"
+                        : colors.glassBorder,
+                    marginBottom: 10,
                   }}
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <View
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        borderRadius: 8,
-                        backgroundColor: week.isCompleted ? ACCENT.milestone + "26" : isCurrentWeek ? theme.color + "26" : colors.secondary,
-                      }}
-                    >
-                      <Text style={{ color: week.isCompleted ? ACCENT.milestone : isCurrentWeek ? theme.color : colors.mutedForeground, fontFamily: FONT.bold, fontSize: 11 }}>
-                        Week {week.week}
+                    <View style={{
+                      paddingHorizontal: 9,
+                      paddingVertical: 3,
+                      borderRadius: 7,
+                      backgroundColor: week.isCompleted
+                        ? ACCENT.milestone + "26"
+                        : isCurrentWeek
+                          ? theme.color + "26"
+                          : colors.secondary,
+                    }}>
+                      <Text style={{
+                        color: week.isCompleted ? ACCENT.milestone : isCurrentWeek ? theme.color : colors.mutedForeground,
+                        fontFamily: FONT.bold,
+                        fontSize: 10,
+                      }}>
+                        WK {week.week}
                       </Text>
                     </View>
-                    <Text style={{ color: week.isCompleted ? ACCENT.milestone : isCurrentWeek ? colors.foreground : colors.mutedForeground, fontFamily: FONT.medium, fontSize: 14 }}>
-                      {week.name}
-                    </Text>
+                    <View>
+                      <Text style={{
+                        color: week.isCompleted ? ACCENT.milestone : isCurrentWeek ? colors.foreground : colors.mutedForeground,
+                        fontFamily: FONT.bold,
+                        fontSize: 13,
+                      }}>
+                        {week.name}
+                      </Text>
+                      <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, marginTop: 1 }}>
+                        {week.completedCount}/{week.challenges.length} days
+                      </Text>
+                    </View>
                   </View>
-                  {week.isCompleted && <ChevronDown size={16} color={colors.mutedForeground} style={{ transform: [{ rotate: collapsed ? "0deg" : "180deg" }] }} />}
+                  {week.isCompleted && (
+                    <ChevronDown
+                      size={16}
+                      color={ACCENT.milestone}
+                      style={{ transform: [{ rotate: collapsed ? "0deg" : "180deg" }] }}
+                    />
+                  )}
                 </PressableScale>
 
+                {/* Day nodes */}
                 {!collapsed && (
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "flex-start" }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "flex-start", paddingHorizontal: 2 }}>
                     {week.challenges.map((c) => (
                       <PathNode
                         key={c.id}
@@ -359,12 +420,6 @@ export default function Dashboard() {
         pathType={path}
         onClose={() => setSelected(null)}
         onComplete={handleComplete}
-      />
-
-      {/* Confetti overlay — fires on milestones and bonus XP */}
-      <ConfettiOverlay
-        visible={showConfetti}
-        onFinish={() => setShowConfetti(false)}
       />
     </View>
   );
