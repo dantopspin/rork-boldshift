@@ -1,5 +1,5 @@
 import { Check, Gift } from "lucide-react-native";
-import React from "react";
+import React, { memo } from "react";
 import { Text, View } from "react-native";
 import GlassCard from "@/components/GlassCard";
 import PressableScale from "@/components/PressableScale";
@@ -15,7 +15,7 @@ interface Props {
   onComplete: () => void;
 }
 
-export default function BonusChallengeCard({ challenge, isCompleted, pathType, onComplete }: Props) {
+const BonusChallengeCard = memo(function BonusChallengeCard({ challenge, isCompleted, pathType, onComplete }: Props) {
   const { colors } = useTheme();
   const theme = PATH_THEME[pathType];
 
@@ -58,4 +58,6 @@ export default function BonusChallengeCard({ challenge, isCompleted, pathType, o
       </View>
     </GlassCard>
   );
-}
+});
+
+export default BonusChallengeCard;

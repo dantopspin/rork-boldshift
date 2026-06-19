@@ -9,7 +9,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react-native";
-import React from "react";
+import React, { memo } from "react";
 import { AchievementIcon } from "@/data/achievements";
 
 interface Props {
@@ -19,7 +19,7 @@ interface Props {
 }
 
 /** Maps an achievement's icon name to a lucide icon component. */
-export default function AchievementIconView({ icon, size = 20, color }: Props) {
+const AchievementIconView = memo(function AchievementIconView({ icon, size = 20, color }: Props) {
   const common = { size, color };
   switch (icon) {
     case "trophy":
@@ -41,4 +41,6 @@ export default function AchievementIconView({ icon, size = 20, color }: Props) {
     default:
       return <Star {...common} />;
   }
-}
+});
+
+export default AchievementIconView;

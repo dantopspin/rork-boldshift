@@ -1,5 +1,5 @@
 import { Flame } from "lucide-react-native";
-import React, { useMemo } from "react";
+import React, { memo, useMemo } from "react";
 import { Text, View } from "react-native";
 import GlassCard from "@/components/GlassCard";
 import { FONT, PATH_THEME } from "@/constants/theme";
@@ -9,15 +9,16 @@ import { PathType } from "@/types";
 interface Props {
   streak: number;
   longestStreak: number;
-  pathType: PathType;
+  pathType: PathType | null;
 }
 
 const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
 /** A 5-week heatmap that highlights the most recent `streak` days, properly aligned by day-of-week. */
-export default function StreakCalendar({ streak, longestStreak, pathType }: Props) {
+const StreakCalendar = memo(function StreakCalendar({ streak, longestStreak, pathType }: Props) {
   const { colors } = useTheme();
-  const theme = PATH_THEME[pathType];
+  const resolvedPath = (pathType ?? "introvert") as PathType;
+  const theme = PATH_THEME[resolvedPath];
   const totalCells = 35;
 
   /** Build 5 rows × 7 columns with correct day-of-week offset so active cells align under the right day letter. */
@@ -99,4 +100,6 @@ export default function StreakCalendar({ streak, longestStreak, pathType }: Prop
       </Text>
     </GlassCard>
   );
-}
+});
+
+export default StreakCalendar;

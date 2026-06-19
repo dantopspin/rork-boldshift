@@ -1,10 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
 import { Award, Check, Crown, Flame, Sparkles, X, Zap } from "lucide-react-native";
 import React, { useState } from "react";
-import { ActivityIndicator, InteractionManager, Text, View } from "react-native";
-import Purchases from "react-native-purchases";
+import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "@/components/AppButton";
 import PressableScale from "@/components/PressableScale";
@@ -26,35 +24,36 @@ type Plan = "pro_monthly" | "pro_weekly";
 export default function Paywall() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { purchase, restore } = useSubscription();
+  const { purchase, restore, offerings } = useSubscription();
   const [plan, setPlan] = useState<Plan>("pro_monthly");
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
   const [isRestoring, setIsRestoring] = useState<boolean>(false);
-
-  const {
-    data: offerings,
-    isLoading,
-  } = useQuery({
-    queryKey: ["rc-offerings"],
-    queryFn: async () => Purchases.getOfferings(),
-    staleTime: 1000 * 60 * 10, // 10 min
-  });
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   const currentOffering = offerings?.current;
   const monthlyPackage = currentOffering?.monthly;
   const weeklyPackage = currentOffering?.weekly;
 
+  // If offerings haven't loaded yet, still show the UI with fallback prices
+  const monthlyPrice = monthlyPackage?.product?.priceString ?? "$14.99";
+  const weeklyPrice = weeklyPackage?.product?.priceString ?? "$4.99";
+
   const handlePurchase = async (): Promise<void> => {
     if (isPurchasing) return;
     triggerHaptic("success");
     setIsPurchasing(true);
+    setPurchaseError(null);
     try {
-      await purchase(plan);
+      const success = await purchase(plan);
+      if (success) {
+        router.back();
+      } else {
+        setPurchaseError("Purchase was cancelled or failed. Please try again.");
+      }
+    } catch {
+      setPurchaseError("Something went wrong. Please try again.");
     } finally {
       setIsPurchasing(false);
-      InteractionManager.runAfterInteractions(() => {
-        router.back();
-      });
     }
   };
 
@@ -62,15 +61,18 @@ export default function Paywall() {
     if (isRestoring) return;
     triggerHaptic("light");
     setIsRestoring(true);
+    setPurchaseError(null);
     try {
-      await restore();
+      const success = await restore();
+      if (success) {
+        router.back();
+      }
+    } catch {
+      setPurchaseError("Restore failed. Please try again.");
     } finally {
       setIsRestoring(false);
     }
   };
-
-  const monthlyPrice = monthlyPackage?.product?.priceString ?? "$14.99";
-  const weeklyPrice = weeklyPackage?.product?.priceString ?? "$4.99";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -112,40 +114,41 @@ export default function Paywall() {
             })}
           </View>
 
-          {/* Plan options */}
-          {isLoading ? (
-            <View style={{ alignItems: "center", paddingVertical: 20 }}>
-              <ActivityIndicator size="small" color={colors.mutedForeground} />
-            </View>
-          ) : (
-            <View style={{ gap: 10 }}>
-              <PlanOption
-                active={plan === "pro_monthly"}
-                onPress={() => { triggerHaptic("light"); setPlan("pro_monthly"); }}
-                title="Monthly"
-                price={`${monthlyPrice}/mo`}
-                subtitle="Best value"
-                badge="POPULAR"
-              />
-              <PlanOption
-                active={plan === "pro_weekly"}
-                onPress={() => { triggerHaptic("light"); setPlan("pro_weekly"); }}
-                title="Weekly"
-                price={`${weeklyPrice}/wk`}
-                subtitle="Billed weekly"
-              />
-            </View>
+          {/* Plan options — always visible, prices show immediately via cache */}
+          <View style={{ gap: 10 }}>
+            <PlanOption
+              active={plan === "pro_monthly"}
+              onPress={() => { triggerHaptic("light"); setPlan("pro_monthly"); }}
+              title="Monthly"
+              price={`${monthlyPrice}/mo`}
+              subtitle="Best value"
+              badge="POPULAR"
+            />
+            <PlanOption
+              active={plan === "pro_weekly"}
+              onPress={() => { triggerHaptic("light"); setPlan("pro_weekly"); }}
+              title="Weekly"
+              price={`${weeklyPrice}/wk`}
+              subtitle="Billed weekly"
+            />
+          </View>
+
+          {/* Error message */}
+          {purchaseError && (
+            <Text style={{ color: colors.destructive, fontFamily: FONT.medium, fontSize: 13, textAlign: "center", marginTop: 12 }}>
+              {purchaseError}
+            </Text>
           )}
 
           {/* CTA */}
-          <View style={{ marginTop: 20 }}>
+          <View style={{ marginTop: purchaseError ? 10 : 20 }}>
             <AppButton
               label={isPurchasing ? "Processing…" : "Continue with Pro"}
               size="lg"
               variant="gold"
               fullWidth
               onPress={handlePurchase}
-              disabled={isPurchasing || isLoading}
+              disabled={isPurchasing}
             />
             <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 17 }}>
               Cancel anytime. No free trials.

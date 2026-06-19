@@ -3,10 +3,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
-import Purchases, { type CustomerInfo, LOG_LEVEL } from "react-native-purchases";
+import Purchases, { type CustomerInfo, type PurchasesOfferings, LOG_LEVEL } from "react-native-purchases";
 import { FREE_DAYS, TOTAL_DAYS } from "@/types";
 
 const STORAGE_KEY = "boldshift_subscription";
+
 export type Tier = "free" | "pro_monthly" | "pro_weekly";
 
 function getRCToken(): string {
@@ -29,10 +30,34 @@ if (apiKey) {
   }
 }
 
+// Eager-prefetch offerings so the paywall loads instantly
+let _offeringsCache: PurchasesOfferings | null = null;
+let _offeringsPromise: Promise<PurchasesOfferings | null> | null = null;
+
+function prefetchOfferings(): Promise<PurchasesOfferings | null> {
+  if (_offeringsCache) return Promise.resolve(_offeringsCache);
+  if (_offeringsPromise) return _offeringsPromise;
+  _offeringsPromise = Purchases.getOfferings()
+    .then((o) => {
+      _offeringsCache = o;
+      return o;
+    })
+    .catch(() => null)
+    .finally(() => {
+      _offeringsPromise = null;
+    });
+  return _offeringsPromise;
+}
+
+// Kick off prefetch immediately
+if (apiKey) {
+  prefetchOfferings();
+}
+
 /**
- * RevenueCat-backed subscription state. Customer info and offerings are fetched
- * via react-query; purchase/restore call through the Purchases SDK directly so
- * entitlements stay in sync.
+ * RevenueCat-backed subscription state. Offerings are prefetched at module load
+ * and refreshed via react-query; purchase/restore return success so the UI can
+ * react correctly.
  */
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [tier, setTier] = useState<Tier>("free");
@@ -40,23 +65,28 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [showPaywall, setShowPaywall] = useState<boolean>(false);
   const [showPaywallAfterOnboarding, setShowPaywallAfterOnboarding] = useState<boolean>(false);
 
-  // Fetch customer info to determine active entitlements
-  const { refetch: refetchCustomerInfo } = useQuery({
-    queryKey: ["rc-customer-info"],
-    queryFn: async (): Promise<CustomerInfo> => {
-      const info = await Purchases.getCustomerInfo();
-      return info;
+  // Lightweight offerings query — uses the module-level cache as initialData
+  const { data: offerings } = useQuery({
+    queryKey: ["rc-offerings"],
+    queryFn: async (): Promise<PurchasesOfferings | null> => {
+      try {
+        const o = await Purchases.getOfferings();
+        _offeringsCache = o;
+        return o;
+      } catch {
+        return _offeringsCache;
+      }
     },
-    staleTime: 1000 * 60 * 5, // 5 min
+    initialData: _offeringsCache,
+    staleTime: 1000 * 60 * 10, // 10 min
   });
 
-  // Sync tier from customer info
+  // Fetch customer info to determine active entitlements
   const syncTier = useCallback(async (): Promise<void> => {
     try {
       const info = await Purchases.getCustomerInfo();
       const active = Object.keys(info.entitlements.active);
       if (active.includes("pro")) {
-        // Determine which product is active from the entitlement
         const entitlement = info.entitlements.active["pro"];
         const productId = entitlement?.productIdentifier ?? "";
         if (productId.toLowerCase().includes("weekly")) {
@@ -65,12 +95,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           setTier("pro_monthly");
         }
       } else {
-        // Fall back to cached tier from AsyncStorage
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
-        if (stored === "pro_monthly" || stored === "pro_weekly") {
-          // RevenueCat says not active — respect that
-          setTier("free");
-        }
+        // RevenueCat says not active — clear stored tier
+        setTier("free");
+        AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
       }
     } catch {
       // Offline — use cached tier
@@ -94,17 +121,23 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
   }, []);
 
+  /**
+   * Attempt a purchase. Returns true if the purchase succeeded and the "pro"
+   * entitlement was activated. Returns false if the user cancelled, the package
+   * wasn't found, or the purchase failed for any other reason.
+   */
   const purchase = useCallback(
-    async (plan: "pro_monthly" | "pro_weekly"): Promise<void> => {
+    async (plan: "pro_monthly" | "pro_weekly"): Promise<boolean> => {
       try {
-        const offerings = await Purchases.getOfferings();
+        // Use offerings from cache/query — no extra network call
+        const currentOfferings = offerings ?? _offeringsCache;
         const pkg = plan === "pro_weekly"
-          ? offerings.current?.weekly
-          : offerings.current?.monthly;
+          ? currentOfferings?.current?.weekly
+          : currentOfferings?.current?.monthly;
 
         if (!pkg) {
           console.error(`No ${plan} package found in current offering`);
-          return;
+          return false;
         }
 
         const result = await Purchases.purchasePackage(pkg);
@@ -112,17 +145,20 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           persist(plan);
           setShowPaywall(false);
           setShowPaywallAfterOnboarding(false);
+          return true;
         }
+        return false;
       } catch (e: unknown) {
         const err = e as { userCancelled?: boolean; code?: string };
-        if (err.userCancelled) return;
+        if (err.userCancelled) return false;
         console.error("Purchase failed", e);
+        return false;
       }
     },
-    [persist],
+    [offerings, persist],
   );
 
-  const restore = useCallback(async (): Promise<void> => {
+  const restore = useCallback(async (): Promise<boolean> => {
     try {
       const info = await Purchases.restorePurchases();
       if (info.entitlements.active["pro"]) {
@@ -131,9 +167,12 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         persist(plan);
         setShowPaywall(false);
         setShowPaywallAfterOnboarding(false);
+        return true;
       }
+      return false;
     } catch (e) {
       console.error("Restore failed", e);
+      return false;
     }
   }, [persist]);
 
@@ -150,9 +189,10 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       setShowPaywall,
       showPaywallAfterOnboarding,
       setShowPaywallAfterOnboarding,
+      offerings,
       purchase,
       restore,
     }),
-    [tier, isPro, maxDays, isLoaded, showPaywall, showPaywallAfterOnboarding, purchase, restore],
+    [tier, isPro, maxDays, isLoaded, showPaywall, showPaywallAfterOnboarding, offerings, purchase, restore],
   );
 });

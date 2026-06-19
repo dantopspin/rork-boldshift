@@ -53,9 +53,7 @@ export default function Milestones() {
           <StatCard icon={<Award size={18} color={ACCENT.milestone} />} value={unlocked.length} label="Badges" color={ACCENT.milestone} />
         </View>
 
-        {progress.selectedPath && (
-          <StreakCalendar streak={progress.streak} longestStreak={progress.longestStreak} pathType={progress.selectedPath} />
-        )}
+        <StreakCalendar streak={progress.streak} longestStreak={progress.longestStreak} pathType={progress.selectedPath} />
 
         {/* Achievements */}
         <GlassCard style={{ padding: 16 }}>

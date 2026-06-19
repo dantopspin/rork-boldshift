@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, Crown, Lock, Star } from "lucide-react-native";
-import React, { useRef } from "react";
+import React, { memo, useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { ACCENT, FONT, PATH_THEME } from "@/constants/theme";
 import { triggerHaptic } from "@/lib/haptics";
@@ -20,7 +20,7 @@ interface PathNodeProps {
 const SIZE = 54;
 
 /** A single day node in the journey grid. */
-export default function PathNode({
+const PathNode = memo(function PathNode({
   day,
   status,
   isMilestone,
@@ -136,4 +136,6 @@ export default function PathNode({
       </Animated.View>
     </View>
   );
-}
+});
+
+export default PathNode;

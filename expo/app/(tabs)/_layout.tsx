@@ -20,6 +20,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
+        freezeOnBlur: true,
+        lazy: true,
         tabBarActiveTintColor: tabColors[route.name] ?? colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: {
