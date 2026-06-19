@@ -44,11 +44,13 @@ export default function Paywall() {
     setIsPurchasing(true);
     setPurchaseError(null);
     try {
-      const success = await purchase(plan);
-      if (success) {
+      const result = await purchase(plan);
+      if (result === "success") {
         router.back();
+      } else if (result === "cancelled") {
+        // User cancelled — no error message needed, just stay on paywall
       } else {
-        setPurchaseError("Purchase was cancelled or failed. Please try again.");
+        setPurchaseError("Purchase failed. Please check your connection and try again.");
       }
     } catch {
       setPurchaseError("Something went wrong. Please try again.");

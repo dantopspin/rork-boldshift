@@ -12,47 +12,40 @@ interface Props {
   pathType: PathType | null;
 }
 
-const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
+const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+const ROWS = 5;
+const COLS = 7;
+const TOTAL_CELLS = ROWS * COLS; // 35
 
-/** A 5-week heatmap that highlights the most recent `streak` days, properly aligned by day-of-week. */
+/**
+ * A 5-week heat-map calendar grid (Sun–Sat) that highlights the most recent
+ * `streak` days. Today always sits at the last row + today's day-of-week column;
+ * cells before today that fall within the streak are filled with the path colour.
+ */
 const StreakCalendar = memo(function StreakCalendar({ streak, longestStreak, pathType }: Props) {
   const { colors } = useTheme();
   const resolvedPath = (pathType ?? "introvert") as PathType;
   const theme = PATH_THEME[resolvedPath];
-  const totalCells = 35;
 
-  /** Build 5 rows × 7 columns with correct day-of-week offset so active cells align under the right day letter. */
   const rows = useMemo(() => {
     const today = new Date();
-    const todayDow = today.getDay(); // 0=Sun … 6=Sat
+    const todayDow = today.getDay(); // 0 = Sun … 6 = Sat
+    // Today sits at flat-index 28 + todayDow (row 4, col todayDow)
+    const todayFlat = 28 + todayDow;
 
-    // The cell totalCells-1 positions before today lands at firstCellDow.
-    const firstCellDow = (todayDow - (totalCells - 1) + 70) % 7;
-
-    // Build a flat array: true = active streak day, false = inactive
-    const cells: boolean[] = Array.from({ length: totalCells }, (_, i) => {
-      const distanceFromToday = totalCells - 1 - i;
-      return distanceFromToday >= 0 && distanceFromToday < streak;
-    });
-
-    // Partition into 5 rows of 7, inserting empty placeholders for firstCellDow offset
-    const rowsResult: boolean[][] = [];
-    let cellIdx = 0;
-
-    for (let row = 0; row < 5; row++) {
+    const result: boolean[][] = [];
+    for (let r = 0; r < ROWS; r++) {
       const rowCells: boolean[] = [];
-      for (let col = 0; col < 7; col++) {
-        if (row === 0 && col < firstCellDow) {
-          rowCells.push(false);
-        } else if (cellIdx < totalCells) {
-          rowCells.push(cells[cellIdx]);
-          cellIdx++;
-        }
+      for (let c = 0; c < COLS; c++) {
+        const flatIndex = r * COLS + c;
+        const daysAgo = todayFlat - flatIndex;
+        const active = daysAgo >= 0 && daysAgo < streak;
+        rowCells.push(active);
       }
-      rowsResult.push(rowCells);
+      result.push(rowCells);
     }
-    return rowsResult;
-  }, [streak, totalCells]);
+    return result;
+  }, [streak]);
 
   return (
     <GlassCard style={{ padding: 16 }}>
@@ -68,14 +61,23 @@ const StreakCalendar = memo(function StreakCalendar({ streak, longestStreak, pat
 
       {/* Day-of-week headers */}
       <View style={{ flexDirection: "row", gap: 5, marginBottom: 8 }}>
-        {DAYS.map((d, i) => (
-          <Text key={i} style={{ flex: 1, color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 10, textAlign: "center" }}>
+        {DAY_LABELS.map((d, i) => (
+          <Text
+            key={i}
+            style={{
+              flex: 1,
+              color: colors.mutedForeground,
+              fontFamily: FONT.bold,
+              fontSize: 10,
+              textAlign: "center",
+            }}
+          >
             {d}
           </Text>
         ))}
       </View>
 
-      {/* 5 rows × 7 columns, stretches to full card width */}
+      {/* Grid */}
       <View style={{ gap: 5 }}>
         {rows.map((row, ri) => (
           <View key={ri} style={{ flexDirection: "row", gap: 5 }}>
@@ -84,10 +86,10 @@ const StreakCalendar = memo(function StreakCalendar({ streak, longestStreak, pat
                 key={ci}
                 style={{
                   flex: 1,
-                  height: 22,
-                  borderRadius: 6,
+                  height: 26,
+                  borderRadius: 7,
                   backgroundColor: active ? theme.color : colors.secondary,
-                  opacity: active ? 1 : 0.5,
+                  opacity: active ? 1 : 0.4,
                 }}
               />
             ))}

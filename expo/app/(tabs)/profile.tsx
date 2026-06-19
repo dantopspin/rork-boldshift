@@ -1,7 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Award,
+  Bell,
   ChevronRight,
   Crown,
   FileText,
@@ -15,7 +17,7 @@ import {
   Sun,
   TrendingUp,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import GlassCard from "@/components/GlassCard";
@@ -41,6 +43,21 @@ export default function Profile() {
   const { progress, resetProgress, switchPath, getTotalXP } = useProgress();
   const { isPro, tier, setShowPaywall } = useSubscription();
   const [switching, setSwitching] = useState<boolean>(false);
+  const [notificationsOn, setNotificationsOn] = useState<boolean>(true);
+
+  // Load notification preference
+  useEffect(() => {
+    AsyncStorage.getItem("boldshift_notifications").then((v) => {
+      if (v === "false") setNotificationsOn(false);
+    }).catch(() => {});
+  }, []);
+
+  const toggleNotifications = (): void => {
+    const next = !notificationsOn;
+    setNotificationsOn(next);
+    triggerHaptic("light");
+    AsyncStorage.setItem("boldshift_notifications", String(next)).catch(() => {});
+  };
 
   const currentPath = progress.selectedPath ?? "introvert";
   const CurrentIcon = PATH_ICON[currentPath];
@@ -233,6 +250,24 @@ export default function Profile() {
               <Switch
                 value={isDark}
                 onValueChange={() => { triggerHaptic("light"); toggleTheme(); }}
+                trackColor={{ true: colors.primary, false: colors.muted }}
+                thumbColor="#FFF"
+              />
+            </View>
+
+            <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 16 }} />
+
+            {/* Notifications */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                  <Bell size={16} color={colors.mutedForeground} />
+                </View>
+                <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14 }}>Notifications</Text>
+              </View>
+              <Switch
+                value={notificationsOn}
+                onValueChange={toggleNotifications}
                 trackColor={{ true: colors.primary, false: colors.muted }}
                 thumbColor="#FFF"
               />

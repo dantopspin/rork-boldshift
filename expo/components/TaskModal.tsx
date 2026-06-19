@@ -1,8 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft, Check, Frown, Heart, Meh, Smile, X } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -50,8 +51,8 @@ const DIFFICULTY_LABEL: Record<string, string> = { easy: "Easy", medium: "Medium
  * Phase 2 — Complete: shows mood selector + reflection input + "Complete Day X".
  * Skips Phase 1 entirely if the challenge is already completed.
  *
- * KeyboardAvoidingView + ScrollView keep inputs visible when the keyboard is open.
- * PanResponder swipe-down dismisses the sheet smoothly.
+ * Keyboard handling: the sheet slides up when the keyboard opens so the
+ * reflection input stays visible, and the ScrollView scrolls to the input.
  */
 export default function TaskModal({ challenge, visible, isCompleted, canComplete, pathType, onClose, onComplete }: Props) {
   const { colors } = useTheme();
@@ -59,16 +60,55 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
   const [text, setText] = useState<string>("");
   const [mood, setMood] = useState<Mood>("good");
   const [readyToComplete, setReadyToComplete] = useState<boolean>(false);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
 
   const translateY = useRef(new Animated.Value(0)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+  const keyboardY = useRef(new Animated.Value(0)).current;
+
+  // Track keyboard height
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        Animated.timing(keyboardY, {
+          toValue: -e.endCoordinates.height,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+        // Scroll to the input after keyboard animation starts
+        setTimeout(() => {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }, 180);
+      },
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => {
+        setKeyboardHeight(0);
+        Animated.timing(keyboardY, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }).start();
+      },
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [keyboardY]);
 
   // Reset state on open / challenge change
   useEffect(() => {
     if (visible && challenge) {
       setText("");
       setMood("good");
-      setReadyToComplete(isCompleted); // skip phase 1 for already-completed
+      setReadyToComplete(isCompleted);
+      setKeyboardHeight(0);
       translateY.setValue(0);
       Animated.timing(backdropOpacity, {
         toValue: 1,
@@ -80,7 +120,8 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
     }
   }, [visible, challenge?.id, isCompleted]);
 
-  const dismiss = (): void => {
+  const dismiss = useCallback((): void => {
+    Keyboard.dismiss();
     Animated.parallel([
       Animated.timing(translateY, {
         toValue: 500,
@@ -96,7 +137,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
       translateY.setValue(0);
       onClose();
     });
-  };
+  }, [translateY, backdropOpacity, onClose]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -130,10 +171,14 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
 
   const handleComplete = (): void => {
     triggerHaptic("success");
+    Keyboard.dismiss();
     onComplete({ text: text.trim(), mood });
   };
 
   const phaseOne = !readyToComplete && !isCompleted;
+
+  // Combine the pan-drag offset with the keyboard offset
+  const sheetTranslate = Animated.add(translateY, keyboardY);
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={dismiss}>
@@ -152,9 +197,12 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
           </TouchableWithoutFeedback>
         </Animated.View>
 
-        {/* Sheet */}
-        <Animated.View style={{ transform: [{ translateY }] }}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        {/* Sheet — offset by both drag position and keyboard */}
+        <Animated.View style={{ transform: [{ translateY: sheetTranslate }] }}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "position" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+          >
             <View style={{ backgroundColor: colors.cardSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
               <SafeAreaView edges={["bottom"]}>
                 {/* Drag handle — always visible, carries PanResponder */}
@@ -165,11 +213,12 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                   <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.border }} />
                 </View>
 
-                {/* ScrollView for content that may need keyboard room */}
                 <ScrollView
+                  ref={scrollRef}
                   bounces={false}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
+                  scrollEventThrottle={16}
                   contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 20, gap: 12 }}
                 >
                   {/* Header row */}
@@ -296,6 +345,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                       {/* Reflection input */}
                       <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>Reflection (optional)</Text>
                       <TextInput
+                        ref={inputRef}
                         value={text}
                         onChangeText={setText}
                         placeholder="What did you notice? How did it go?"
@@ -304,6 +354,11 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                         returnKeyType="done"
                         submitBehavior="blurAndSubmit"
                         blurOnSubmit
+                        onFocus={() => {
+                          setTimeout(() => {
+                            scrollRef.current?.scrollToEnd({ animated: true });
+                          }, 150);
+                        }}
                         style={{
                           height: 72,
                           borderRadius: 14,

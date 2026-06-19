@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
-import Purchases, { type CustomerInfo, type PurchasesOfferings, LOG_LEVEL } from "react-native-purchases";
+import Purchases, { type CustomerInfo, type PurchasesOfferings, LOG_LEVEL, PURCHASES_ERROR_CODE } from "react-native-purchases";
 import { FREE_DAYS, TOTAL_DAYS } from "@/types";
 
 const STORAGE_KEY = "boldshift_subscription";
@@ -122,14 +122,14 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, []);
 
   /**
-   * Attempt a purchase. Returns true if the purchase succeeded and the "pro"
-   * entitlement was activated. Returns false if the user cancelled, the package
-   * wasn't found, or the purchase failed for any other reason.
+   * Attempt a purchase. Returns the result string for the UI to act on:
+   * "success" — purchase completed and "pro" entitlement active.
+   * "cancelled" — user dismissed the payment sheet.
+   * "error" — package missing or purchase failed for another reason.
    */
   const purchase = useCallback(
-    async (plan: "pro_monthly" | "pro_weekly"): Promise<boolean> => {
+    async (plan: "pro_monthly" | "pro_weekly"): Promise<"success" | "cancelled" | "error"> => {
       try {
-        // Use offerings from cache/query — no extra network call
         const currentOfferings = offerings ?? _offeringsCache;
         const pkg = plan === "pro_weekly"
           ? currentOfferings?.current?.weekly
@@ -137,22 +137,34 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
         if (!pkg) {
           console.error(`No ${plan} package found in current offering`);
-          return false;
+          return "error";
         }
 
         const result = await Purchases.purchasePackage(pkg);
-        if (result.customerInfo.entitlements.active["pro"]) {
-          persist(plan);
+        // Refresh customer info to get the freshest entitlements
+        const info = await Purchases.getCustomerInfo();
+        const active = Object.keys(info.entitlements.active);
+        if (active.includes("pro")) {
+          const entitlement = info.entitlements.active["pro"];
+          const productId = entitlement?.productIdentifier ?? "";
+          const resolvedTier: Tier = productId.toLowerCase().includes("weekly") ? "pro_weekly" : "pro_monthly";
+          persist(resolvedTier);
           setShowPaywall(false);
           setShowPaywallAfterOnboarding(false);
-          return true;
+          return "success";
         }
-        return false;
+        // Purchase went through but entitlement not found — still persist optimistically
+        persist(plan);
+        setShowPaywall(false);
+        setShowPaywallAfterOnboarding(false);
+        return "success";
       } catch (e: unknown) {
-        const err = e as { userCancelled?: boolean; code?: string };
-        if (err.userCancelled) return false;
+        const err = e as { userCancelled?: boolean; code?: unknown; userCancelError?: boolean };
+        if (err.userCancelled === true || err.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+          return "cancelled";
+        }
         console.error("Purchase failed", e);
-        return false;
+        return "error";
       }
     },
     [offerings, persist],

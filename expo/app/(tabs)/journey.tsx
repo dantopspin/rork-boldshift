@@ -17,6 +17,7 @@ import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AnimatedProgressBar from "@/components/AnimatedProgressBar";
 import BonusChallengeCard from "@/components/BonusChallengeCard";
+import ConfettiOverlay from "@/components/ConfettiOverlay";
 import GlassCard from "@/components/GlassCard";
 import PathNode from "@/components/PathNode";
 import PressableScale from "@/components/PressableScale";
@@ -34,6 +35,9 @@ import { Challenge, FREE_DAYS, MILESTONES, Mood, NodeStatus } from "@/types";
 
 const GREETINGS = ["Let's grow today", "Keep the momentum", "One step further", "You've got this"];
 const getDailyGreeting = () => GREETINGS[new Date().getDay() % GREETINGS.length];
+
+/** Days that trigger a confetti celebration when completed. */
+const CELEBRATION_DAYS = new Set([1, 7, 14, 21, 30, 45, 60]);
 
 export default function Dashboard() {
   const router = useRouter();
@@ -55,6 +59,7 @@ export default function Dashboard() {
 
   const [selected, setSelected] = useState<Challenge | null>(null);
   const [collapsedWeeks, setCollapsedWeeks] = useState<number[]>([]);
+  const [showConfetti, setShowConfetti] = useState<boolean>(false);
 
   const path = progress.selectedPath;
   const theme = path ? PATH_THEME[path] : PATH_THEME.introvert;
@@ -105,8 +110,13 @@ export default function Dashboard() {
 
   const handleComplete = (reflection: { text: string; mood: Mood }): void => {
     if (selected) {
-      completeDay(selected.day, reflection);
+      const day = selected.day;
+      completeDay(day, reflection);
       setSelected(null);
+      if (CELEBRATION_DAYS.has(day)) {
+        triggerHaptic("success");
+        setShowConfetti(true);
+      }
     }
   };
 
@@ -278,7 +288,11 @@ export default function Dashboard() {
             challenge={dailyBonus}
             isCompleted={bonusDone}
             pathType={path}
-            onComplete={() => completeBonusChallenge(dailyBonus.id)}
+            onComplete={() => {
+              completeBonusChallenge(dailyBonus.id);
+              triggerHaptic("success");
+              setShowConfetti(true);
+            }}
           />
 
           {/* ── Free user upgrade banner ── */}
@@ -420,6 +434,8 @@ export default function Dashboard() {
         onClose={() => setSelected(null)}
         onComplete={handleComplete}
       />
+
+      <ConfettiOverlay visible={showConfetti} onFinish={() => setShowConfetti(false)} />
     </View>
   );
 }
