@@ -355,7 +355,7 @@ export default function Onboarding() {
                     <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: "#FFF", marginLeft: reminderEnabled ? 21 : 3 }} />
                   </View>
                 </PressableScale>
-                <AppButton label="Begin Day 1 🚀" size="lg" fullWidth gradient={PATH_THEME[selectedPath].gradient} onPress={handleStart} />
+                <AppButton label="Begin Day 1" size="lg" fullWidth gradient={PATH_THEME[selectedPath].gradient} onPress={handleStart} />
               </View>
             )}
           </ScrollView>
