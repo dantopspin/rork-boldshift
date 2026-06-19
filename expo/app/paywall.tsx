@@ -1,8 +1,10 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 import { Award, Check, Crown, Flame, Sparkles, X, Zap } from "lucide-react-native";
 import React, { useState } from "react";
-import { InteractionManager, Text, View } from "react-native";
+import { ActivityIndicator, InteractionManager, Text, View } from "react-native";
+import Purchases from "react-native-purchases";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "@/components/AppButton";
 import PressableScale from "@/components/PressableScale";
@@ -24,17 +26,51 @@ type Plan = "pro_monthly" | "pro_weekly";
 export default function Paywall() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { purchase } = useSubscription();
+  const { purchase, restore } = useSubscription();
   const [plan, setPlan] = useState<Plan>("pro_monthly");
+  const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
+  const [isRestoring, setIsRestoring] = useState<boolean>(false);
 
-  const handlePurchase = (): void => {
+  const {
+    data: offerings,
+    isLoading,
+  } = useQuery({
+    queryKey: ["rc-offerings"],
+    queryFn: async () => Purchases.getOfferings(),
+    staleTime: 1000 * 60 * 10, // 10 min
+  });
+
+  const currentOffering = offerings?.current;
+  const monthlyPackage = currentOffering?.monthly;
+  const weeklyPackage = currentOffering?.weekly;
+
+  const handlePurchase = async (): Promise<void> => {
+    if (isPurchasing) return;
     triggerHaptic("success");
-    purchase(plan);
-    // Ensure context state commits before navigating back so Pro features are active
-    InteractionManager.runAfterInteractions(() => {
-      router.back();
-    });
+    setIsPurchasing(true);
+    try {
+      await purchase(plan);
+    } finally {
+      setIsPurchasing(false);
+      InteractionManager.runAfterInteractions(() => {
+        router.back();
+      });
+    }
   };
+
+  const handleRestore = async (): Promise<void> => {
+    if (isRestoring) return;
+    triggerHaptic("light");
+    setIsRestoring(true);
+    try {
+      await restore();
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const monthlyPrice = monthlyPackage?.product?.priceString ?? "$14.99";
+  const weeklyPrice = weeklyPackage?.product?.priceString ?? "$4.99";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -47,7 +83,7 @@ export default function Paywall() {
           </PressableScale>
         </View>
 
-        {/* Content — flex: 1 fills available space, flexShrink keeps it from pushing legal off-screen */}
+        {/* Content */}
         <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: "center" }}>
           {/* Header */}
           <View style={{ alignItems: "center", marginBottom: 24 }}>
@@ -77,34 +113,61 @@ export default function Paywall() {
           </View>
 
           {/* Plan options */}
-          <View style={{ gap: 10 }}>
-            <PlanOption
-              active={plan === "pro_monthly"}
-              onPress={() => { triggerHaptic("light"); setPlan("pro_monthly"); }}
-              title="Monthly"
-              price="$14.99/mo"
-              subtitle="Best value"
-              badge="POPULAR"
-            />
-            <PlanOption
-              active={plan === "pro_weekly"}
-              onPress={() => { triggerHaptic("light"); setPlan("pro_weekly"); }}
-              title="Weekly"
-              price="$4.99/wk"
-              subtitle="Billed weekly"
-            />
-          </View>
+          {isLoading ? (
+            <View style={{ alignItems: "center", paddingVertical: 20 }}>
+              <ActivityIndicator size="small" color={colors.mutedForeground} />
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              <PlanOption
+                active={plan === "pro_monthly"}
+                onPress={() => { triggerHaptic("light"); setPlan("pro_monthly"); }}
+                title="Monthly"
+                price={`${monthlyPrice}/mo`}
+                subtitle="Best value"
+                badge="POPULAR"
+              />
+              <PlanOption
+                active={plan === "pro_weekly"}
+                onPress={() => { triggerHaptic("light"); setPlan("pro_weekly"); }}
+                title="Weekly"
+                price={`${weeklyPrice}/wk`}
+                subtitle="Billed weekly"
+              />
+            </View>
+          )}
 
           {/* CTA */}
           <View style={{ marginTop: 20 }}>
-            <AppButton label="Continue with Pro" size="lg" variant="gold" fullWidth onPress={handlePurchase} />
+            <AppButton
+              label={isPurchasing ? "Processing…" : "Continue with Pro"}
+              size="lg"
+              variant="gold"
+              fullWidth
+              onPress={handlePurchase}
+              disabled={isPurchasing || isLoading}
+            />
             <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 17 }}>
               Cancel anytime. No free trials.
             </Text>
           </View>
+
+          {/* Restore purchases */}
+          <View style={{ marginTop: 14, alignItems: "center" }}>
+            <PressableScale
+              onPress={handleRestore}
+              haptic="light"
+              disabled={isRestoring}
+              innerStyle={{ paddingVertical: 8, paddingHorizontal: 16 }}
+            >
+              <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>
+                {isRestoring ? "Restoring…" : "Restore Purchases"}
+              </Text>
+            </PressableScale>
+          </View>
         </View>
 
-        {/* Legal — pinned to bottom */}
+        {/* Legal */}
         <View style={{ paddingHorizontal: 24, paddingBottom: 12, alignItems: "center" }}>
           <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, textAlign: "center", lineHeight: 16 }}>
             By subscribing, you agree to our{" "}
