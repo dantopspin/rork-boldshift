@@ -95,7 +95,7 @@ export default function StreakCalendar({ streak, longestStreak, pathType }: Prop
       </View>
 
       <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, marginTop: 10, textAlign: "center" }}>
-        {streak > 0 ? `${streak}-day streak going strong 🔥` : "Complete a day to start your streak"}
+        {streak > 0 ? `${streak}-day streak going strong!` : "Complete a day to start your streak"}
       </Text>
     </GlassCard>
   );
