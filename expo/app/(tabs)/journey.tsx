@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Crown,
   Flame,
-  Gift,
   Lock,
   Quote as QuoteIcon,
   Sparkles,

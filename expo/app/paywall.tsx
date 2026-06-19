@@ -2,7 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
 import { Award, Check, Crown, Flame, Sparkles, X, Zap } from "lucide-react-native";
 import React, { useState } from "react";
-import { Text, View } from "react-native";
+import { InteractionManager, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "@/components/AppButton";
 import PressableScale from "@/components/PressableScale";
@@ -30,7 +30,10 @@ export default function Paywall() {
   const handlePurchase = (): void => {
     triggerHaptic("success");
     purchase(plan);
-    router.back();
+    // Ensure context state commits before navigating back so Pro features are active
+    InteractionManager.runAfterInteractions(() => {
+      router.back();
+    });
   };
 
   return (

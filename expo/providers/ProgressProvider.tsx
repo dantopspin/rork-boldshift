@@ -254,7 +254,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       const nextIncompleteDay =
         Array.from({ length: 60 }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? 60;
       // Recalculate streak: yesterday was completed, today is now the continuation point
-      const newStreak = prev.lastCompletedDate === yStr || prev.lastCompletedDate === today
+      const newStreak = prev.lastCompletedDate === yStr
         ? prev.streak + 1
         : 1;
       const updated: UserProgress = {
@@ -273,7 +273,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
 
   const dismissCheckIn = useCallback((): void => {
     const today = todayStr();
-    setProgress((prev) => ({ ...prev, streak: 0, checkInDismissedDate: today, lastVisitDate: today }));
+    setProgress((prev) => ({ ...prev, checkInDismissedDate: today, lastVisitDate: today }));
   }, []);
 
   return useMemo(

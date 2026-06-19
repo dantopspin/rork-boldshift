@@ -221,16 +221,25 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                       >
                         {challenge.description}
                       </Text>
-                      <AppButton
-                        label="I'll do this challenge →"
-                        size="lg"
-                        fullWidth
-                        gradient={theme.gradient}
-                        onPress={() => {
-                          triggerHaptic("medium");
-                          setReadyToComplete(true);
-                        }}
-                      />
+                      {blocked ? (
+                        <View style={{ padding: 14, borderRadius: 14, backgroundColor: colors.secondary }}>
+                          <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13, textAlign: "center" }}>One challenge per day</Text>
+                          <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 4 }}>
+                            You already completed today's challenge. Come back tomorrow!
+                          </Text>
+                        </View>
+                      ) : (
+                        <AppButton
+                          label="I'll do this challenge →"
+                          size="lg"
+                          fullWidth
+                          gradient={theme.gradient}
+                          onPress={() => {
+                            triggerHaptic("medium");
+                            setReadyToComplete(true);
+                          }}
+                        />
+                      )}
                     </>
                   )}
 
@@ -246,24 +255,6 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                       <View style={{ padding: 14, borderRadius: 14, backgroundColor: ACCENT.success + "1A", flexDirection: "row", alignItems: "center", gap: 10 }}>
                         <Check size={20} color={ACCENT.success} strokeWidth={3} />
                         <Text style={{ color: ACCENT.success, fontFamily: FONT.bold, fontSize: 14 }}>Completed — nice work!</Text>
-                      </View>
-                    </>
-                  )}
-
-                  {/* ---- Blocked (one-per-day) ---- */}
-                  {blocked && !isCompleted && (
-                    <>
-                      <Text
-                        numberOfLines={4}
-                        style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 14, lineHeight: 20 }}
-                      >
-                        {challenge.description}
-                      </Text>
-                      <View style={{ padding: 14, borderRadius: 14, backgroundColor: colors.secondary }}>
-                        <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13, textAlign: "center" }}>One challenge per day</Text>
-                        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 4 }}>
-                          You already completed today's challenge. Come back tomorrow!
-                        </Text>
                       </View>
                     </>
                   )}
