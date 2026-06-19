@@ -155,7 +155,7 @@ export default function Profile() {
             <View style={{ flexDirection: "row", flexWrap: "wrap", borderTopWidth: 1, borderTopColor: colors.border }}>
               {[
                 { label: "Days done", value: `${progress.completedDays.length}/60`, color: theme.color },
-                { label: "Streak", value: `${progress.streak}d 🔥`, color: ACCENT.streak },
+                { label: "Streak", value: `${progress.streak}d`, color: ACCENT.streak },
                 { label: "Best streak", value: `${progress.longestStreak}d`, color: colors.foreground },
                 { label: "Badges", value: `${progress.unlockedAchievements.length}`, color: ACCENT.milestone },
               ].map((stat, i) => (
