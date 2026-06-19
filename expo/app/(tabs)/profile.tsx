@@ -18,12 +18,11 @@ import {
 import React, { useState } from "react";
 import { Alert, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AppButton from "@/components/AppButton";
 import GlassCard from "@/components/GlassCard";
 import PressableScale from "@/components/PressableScale";
+import AnimatedProgressBar from "@/components/AnimatedProgressBar";
 import { ACCENT, FONT, GOLD_GRADIENT, PATH_THEME } from "@/constants/theme";
 import { getCurrentLevel, getNextLevel, getProgressToNextLevel } from "@/data/xpLevels";
-import AnimatedProgressBar from "@/components/AnimatedProgressBar";
 import { triggerHaptic } from "@/lib/haptics";
 import { useProgress } from "@/providers/ProgressProvider";
 import { useSubscription } from "@/providers/SubscriptionProvider";
@@ -41,7 +40,6 @@ export default function Profile() {
   const { colors, isDark, toggleTheme } = useTheme();
   const { progress, resetProgress, switchPath, getTotalXP } = useProgress();
   const { isPro, tier, setShowPaywall } = useSubscription();
-
   const [switching, setSwitching] = useState<boolean>(false);
 
   const currentPath = progress.selectedPath ?? "introvert";
@@ -51,7 +49,6 @@ export default function Profile() {
   const level = getCurrentLevel(totalXP);
   const nextLevel = getNextLevel(totalXP);
   const levelProgress = getProgressToNextLevel(totalXP) / 100;
-
   const otherPaths = (["introvert", "speaking", "assertiveness"] as PathType[]).filter((p) => p !== currentPath);
 
   const confirmReset = (): void => {
@@ -99,129 +96,217 @@ export default function Profile() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient colors={colors.backgroundGradient} style={{ position: "absolute", inset: 0 }} />
+
       <SafeAreaView edges={["top"]}>
-        <View style={{ paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ paddingHorizontal: 20, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 8 }}>
           <CurrentIcon size={18} color={theme.color} />
           <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 20 }}>Profile</Text>
         </View>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 110, gap: 14 }} showsVerticalScrollIndicator={false}>
-        {/* Subscription */}
-        <GlassCard style={{ padding: 16 }} elevated borderColor={isPro ? ACCENT.milestone + "4D" : undefined}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: isPro ? "transparent" : colors.secondary, overflow: "hidden" }}>
-                {isPro ? (
-                  <LinearGradient colors={[ACCENT.milestone, ACCENT.speaking]} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
-                    <Crown size={20} color="#FFF" />
-                  </LinearGradient>
-                ) : (
-                  <Crown size={20} color={colors.mutedForeground} />
-                )}
+      <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+
+        {/* ── Hero banner ── */}
+        <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+          <GlassCard style={{ padding: 0, overflow: "hidden" }} elevated borderColor={theme.color + "44"}>
+            {/* Gradient strip at top */}
+            <LinearGradient
+              colors={[theme.color + "33", theme.color + "08"]}
+              style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}
+            >
+              {/* Path identity row */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <LinearGradient
+                  colors={theme.gradient}
+                  style={{ width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" }}
+                >
+                  <CurrentIcon size={24} color="#FFF" />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginBottom: 2 }}>
+                    Current path
+                  </Text>
+                  <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 17 }}>
+                    {theme.label}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12 }}>
+                    {theme.tagline}
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12 }}>Subscription</Text>
-                <Text style={{ color: isPro ? ACCENT.milestone : colors.foreground, fontFamily: FONT.bold, fontSize: 15 }}>
-                  {isPro ? `BoldShift Pro${tier === "pro_weekly" ? " · Weekly" : " · Monthly"}` : "Free Plan"}
+
+              {/* XP / level row */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <TrendingUp size={14} color={ACCENT.milestone} />
+                  <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13 }}>{level.name}</Text>
+                </View>
+                <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 13 }}>{totalXP} XP</Text>
+              </View>
+              <AnimatedProgressBar progress={levelProgress} color={ACCENT.milestone} trackColor={colors.secondary} height={7} />
+              {nextLevel && (
+                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, marginTop: 6 }}>
+                  {nextLevel.minXP - totalXP} XP to {nextLevel.name}
+                </Text>
+              )}
+            </LinearGradient>
+
+            {/* 4-stat grid */}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", borderTopWidth: 1, borderTopColor: colors.border }}>
+              {[
+                { label: "Days done", value: `${progress.completedDays.length}/60`, color: theme.color },
+                { label: "Streak", value: `${progress.streak}d 🔥`, color: ACCENT.streak },
+                { label: "Best streak", value: `${progress.longestStreak}d`, color: colors.foreground },
+                { label: "Badges", value: `${progress.unlockedAchievements.length}`, color: ACCENT.milestone },
+              ].map((stat, i) => (
+                <View
+                  key={stat.label}
+                  style={{
+                    width: "50%",
+                    paddingVertical: 14,
+                    paddingHorizontal: 20,
+                    borderRightWidth: i % 2 === 0 ? 1 : 0,
+                    borderBottomWidth: i < 2 ? 1 : 0,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <Text style={{ color: stat.color, fontFamily: FONT.extrabold, fontSize: 20 }}>{stat.value}</Text>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>{stat.label}</Text>
+                </View>
+              ))}
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* ── Subscription ── */}
+        <SectionLabel label="Subscription" colors={colors} />
+        <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+          <GlassCard style={{ padding: 16 }} elevated={isPro} borderColor={isPro ? ACCENT.milestone + "4D" : undefined}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: isPro ? "transparent" : colors.secondary }}>
+                  {isPro ? (
+                    <LinearGradient colors={[ACCENT.milestone, ACCENT.speaking]} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+                      <Crown size={18} color="#FFF" />
+                    </LinearGradient>
+                  ) : (
+                    <Crown size={18} color={colors.mutedForeground} />
+                  )}
+                </View>
+                <View>
+                  <Text style={{ color: isPro ? ACCENT.milestone : colors.foreground, fontFamily: FONT.bold, fontSize: 15 }}>
+                    {isPro ? "BoldShift Pro" : "Free Plan"}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12 }}>
+                    {isPro
+                      ? tier === "pro_weekly" ? "Billed weekly" : "Billed monthly"
+                      : "Days 1–15 unlocked"}
+                  </Text>
+                </View>
+              </View>
+              {!isPro && (
+                <PressableScale onPress={() => router.push("/paywall")} haptic="medium">
+                  <LinearGradient colors={GOLD_GRADIENT} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 }}>
+                    <Sparkles size={13} color="#FFF" />
+                    <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 13 }}>Upgrade</Text>
+                  </LinearGradient>
+                </PressableScale>
+              )}
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* ── Settings ── */}
+        <SectionLabel label="Settings" colors={colors} />
+        <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+          <GlassCard style={{ padding: 0 }}>
+            {/* Dark mode */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: isDark ? colors.secondary : ACCENT.milestone + "22", alignItems: "center", justifyContent: "center" }}>
+                  {isDark
+                    ? <Moon size={16} color={colors.mutedForeground} />
+                    : <Sun size={16} color={ACCENT.milestone} />}
+                </View>
+                <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14 }}>Dark Mode</Text>
+              </View>
+              <Switch
+                value={isDark}
+                onValueChange={() => { triggerHaptic("light"); toggleTheme(); }}
+                trackColor={{ true: colors.primary, false: colors.muted }}
+                thumbColor="#FFF"
+              />
+            </View>
+
+            <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 16 }} />
+
+            {/* Switch path */}
+            <PressableScale
+              onPress={handleSwitchPath}
+              innerStyle={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: theme.color + "22", alignItems: "center", justifyContent: "center" }}>
+                  <RefreshCw size={16} color={theme.color} />
+                </View>
+                <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14 }}>Switch Path</Text>
+                {!isPro && <Crown size={13} color={ACCENT.milestone} />}
+              </View>
+              <ChevronRight size={18} color={colors.mutedForeground} />
+            </PressableScale>
+          </GlassCard>
+        </View>
+
+        {/* ── Danger zone ── */}
+        <SectionLabel label="Danger Zone" colors={colors} />
+        <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+          <GlassCard style={{ padding: 0 }} borderColor={colors.destructive + "33"}>
+            <PressableScale
+              onPress={confirmReset}
+              haptic="warning"
+              innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.destructive + "1A", alignItems: "center", justifyContent: "center" }}>
+                <RotateCcw size={16} color={colors.destructive} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.destructive, fontFamily: FONT.bold, fontSize: 14 }}>Reset Progress</Text>
+                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 1 }}>
+                  Permanently deletes all data
                 </Text>
               </View>
-            </View>
-            {!isPro && (
-              <PressableScale onPress={() => router.push("/paywall")} haptic="medium">
-                <LinearGradient colors={GOLD_GRADIENT} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 }}>
-                  <Sparkles size={14} color="#FFF" />
-                  <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 13 }}>Upgrade</Text>
-                </LinearGradient>
-              </PressableScale>
-            )}
-          </View>
-        </GlassCard>
+              <ChevronRight size={18} color={colors.destructive + "88"} />
+            </PressableScale>
+          </GlassCard>
+        </View>
 
-        {/* XP / Level */}
-        <GlassCard style={{ padding: 16 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <TrendingUp size={16} color={ACCENT.success} />
-            <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>Level: {level.name}</Text>
-            <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 13, marginLeft: "auto" }}>{totalXP} XP</Text>
-          </View>
-          <AnimatedProgressBar progress={levelProgress} color={ACCENT.milestone} trackColor={colors.secondary} height={8} />
-          {nextLevel && (
-            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 8 }}>
-              {nextLevel.minXP - totalXP} XP to {nextLevel.name}
-            </Text>
-          )}
-        </GlassCard>
+        {/* ── Legal ── */}
+        <SectionLabel label="Legal" colors={colors} />
+        <View style={{ paddingHorizontal: 20, marginBottom: 8 }}>
+          <GlassCard style={{ padding: 0 }}>
+            <PressableScale onPress={() => router.push("/privacy")} innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                <FileText size={16} color={colors.mutedForeground} />
+              </View>
+              <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14, flex: 1 }}>Privacy Policy</Text>
+              <ChevronRight size={18} color={colors.mutedForeground} />
+            </PressableScale>
+            <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 16 }} />
+            <PressableScale onPress={() => router.push("/terms")} innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                <FileText size={16} color={colors.mutedForeground} />
+              </View>
+              <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14, flex: 1 }}>Terms of Service</Text>
+              <ChevronRight size={18} color={colors.mutedForeground} />
+            </PressableScale>
+          </GlassCard>
+        </View>
 
-        {/* Journey stats */}
-        <GlassCard style={{ padding: 16 }}>
-          <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14, marginBottom: 12 }}>Your Journey</Text>
-          <StatRow label="Days completed" value={`${progress.completedDays.length}/60`} color={colors.foreground} />
-          <StatRow label="Current streak" value={`${progress.streak} days`} color={ACCENT.streak} />
-          <StatRow label="Longest streak" value={`${progress.longestStreak} days`} color={colors.foreground} />
-          <StatRow label="Streak freezes" value={`${progress.streakFreezes} left`} color={ACCENT.cyan} />
-          <StatRow label="Badges earned" value={`${progress.unlockedAchievements.length}`} color={ACCENT.milestone} last />
-        </GlassCard>
-
-        {/* Settings */}
-        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.bold, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 20 }}>Settings</Text>
-        <GlassCard style={{ padding: 16 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              {isDark ? <Moon size={18} color={colors.mutedForeground} /> : <Sun size={18} color={ACCENT.milestone} />}
-              <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14 }}>Dark Mode</Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={() => {
-                triggerHaptic("light");
-                toggleTheme();
-              }}
-              trackColor={{ true: colors.primary, false: colors.muted }}
-              thumbColor="#FFF"
-            />
-          </View>
-        </GlassCard>
-
-        {/* Journey actions */}
-        <GlassCard style={{ padding: 16 }}>
-          <PressableScale
-            onPress={handleSwitchPath}
-            innerStyle={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 6 }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <RefreshCw size={18} color={colors.foreground} />
-              <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14 }}>Switch Path</Text>
-              {!isPro && <Crown size={14} color={ACCENT.milestone} />}
-            </View>
-            <ChevronRight size={18} color={colors.mutedForeground} />
-          </PressableScale>
-        </GlassCard>
-
-        {/* Reset — isolated to signal its destructive weight */}
-        <GlassCard style={{ padding: 16 }}>
-          <PressableScale onPress={confirmReset} haptic="warning" innerStyle={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 }}>
-            <RotateCcw size={18} color={colors.destructive} />
-            <Text style={{ color: colors.destructive, fontFamily: FONT.medium, fontSize: 14 }}>Reset Progress</Text>
-          </PressableScale>
-        </GlassCard>
-
-        {/* Legal */}
-        <GlassCard style={{ padding: 16, gap: 6 }}>
-          <PressableScale onPress={() => router.push("/privacy")} innerStyle={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}>
-            <FileText size={18} color={colors.mutedForeground} />
-            <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14 }}>Privacy Policy</Text>
-          </PressableScale>
-          <PressableScale onPress={() => router.push("/terms")} innerStyle={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}>
-            <FileText size={18} color={colors.mutedForeground} />
-            <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14 }}>Terms of Service</Text>
-          </PressableScale>
-        </GlassCard>
-
-        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, textAlign: "center", marginTop: 4 }}>
+        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, textAlign: "center", marginTop: 8, marginBottom: 4, paddingHorizontal: 20 }}>
           BoldShift · Local-first. Your data stays on your device.
         </Text>
 
+        {/* Path-switching overlay */}
         {switching && (
           <View style={{ position: "absolute", inset: 0, backgroundColor: colors.background, alignItems: "center", justifyContent: "center", gap: 16 }}>
             <LinearGradient colors={theme.gradient} style={{ width: 100, height: 100, borderRadius: 28, alignItems: "center", justifyContent: "center" }}>
@@ -235,12 +320,19 @@ export default function Profile() {
   );
 }
 
-function StatRow({ label, value, color, last }: { label: string; value: string; color: string; last?: boolean }) {
-  const { colors } = useTheme();
+function SectionLabel({ label, colors }: { label: string; colors: any }) {
   return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 7, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.border }}>
-      <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 14 }}>{label}</Text>
-      <Text style={{ color, fontFamily: FONT.bold, fontSize: 14 }}>{value}</Text>
-    </View>
+    <Text style={{
+      color: colors.mutedForeground,
+      fontFamily: FONT.bold,
+      fontSize: 11,
+      textTransform: "uppercase",
+      letterSpacing: 0.7,
+      paddingHorizontal: 20,
+      marginBottom: 8,
+      marginTop: 20,
+    }}>
+      {label}
+    </Text>
   );
 }
