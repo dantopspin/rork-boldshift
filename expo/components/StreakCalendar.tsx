@@ -66,15 +66,15 @@ export default function StreakCalendar({ streak, longestStreak, pathType }: Prop
       </View>
 
       {/* Day-of-week headers */}
-      <View style={{ flexDirection: "row", marginBottom: 8 }}>
+      <View style={{ flexDirection: "row", gap: 5, marginBottom: 8 }}>
         {DAYS.map((d, i) => (
-          <Text key={i} style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 10, width: 30, textAlign: "center" }}>
+          <Text key={i} style={{ flex: 1, color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 10, textAlign: "center" }}>
             {d}
           </Text>
         ))}
       </View>
 
-      {/* 5 rows × 7 columns, left-aligned */}
+      {/* 5 rows × 7 columns, stretches to full card width */}
       <View style={{ gap: 5 }}>
         {rows.map((row, ri) => (
           <View key={ri} style={{ flexDirection: "row", gap: 5 }}>
@@ -82,7 +82,7 @@ export default function StreakCalendar({ streak, longestStreak, pathType }: Prop
               <View
                 key={ci}
                 style={{
-                  width: 30,
+                  flex: 1,
                   height: 22,
                   borderRadius: 6,
                   backgroundColor: active ? theme.color : colors.secondary,
