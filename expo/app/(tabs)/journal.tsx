@@ -162,7 +162,7 @@ export default function Journal() {
               >
                 <GlassCard style={{ padding: 14 }} borderColor={pathColor + "33"}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <View style={{ backgroundColor: pathColor + "26", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
                           <Text style={{ color: pathColor, fontFamily: FONT.bold, fontSize: 11 }}>Day {day}</Text>

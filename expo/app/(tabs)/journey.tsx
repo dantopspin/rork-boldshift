@@ -11,11 +11,12 @@ import {
   Sparkles,
   Trophy,
 } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AnimatedProgressBar from "@/components/AnimatedProgressBar";
 import BonusChallengeCard from "@/components/BonusChallengeCard";
+import ConfettiOverlay from "@/components/ConfettiOverlay";
 import GlassCard from "@/components/GlassCard";
 import PathNode from "@/components/PathNode";
 import PressableScale from "@/components/PressableScale";
@@ -30,6 +31,9 @@ import { useProgress } from "@/providers/ProgressProvider";
 import { useSubscription } from "@/providers/SubscriptionProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Challenge, FREE_DAYS, MILESTONES, Mood, NodeStatus } from "@/types";
+
+/** Days that trigger a confetti celebration when completed. */
+const CELEBRATION_DAYS = new Set([1, 7, 14, 21, 30, 45, 60]);
 
 export default function Dashboard() {
   const router = useRouter();
@@ -51,6 +55,10 @@ export default function Dashboard() {
 
   const [selected, setSelected] = useState<Challenge | null>(null);
   const [collapsedWeeks, setCollapsedWeeks] = useState<number[]>([]);
+
+  // Confetti
+  const [showConfetti, setShowConfetti] = useState<boolean>(false);
+  const lastConfettiKey = useRef<string>("");
 
   const path = progress.selectedPath;
   const theme = path ? PATH_THEME[path] : PATH_THEME.introvert;
@@ -100,9 +108,25 @@ export default function Dashboard() {
 
   const handleComplete = (reflection: { text: string; mood: Mood }): void => {
     if (selected) {
-      completeDay(selected.day, reflection);
+      const day = selected.day;
+      completeDay(day, reflection);
+
+      // Trigger confetti if this is a celebration day
+      if (CELEBRATION_DAYS.has(day)) {
+        const key = `milestone-${day}-${Date.now()}`;
+        lastConfettiKey.current = key;
+        setShowConfetti(true);
+      }
       setSelected(null);
     }
+  };
+
+  const handleBonusComplete = (): void => {
+    completeBonusChallenge(dailyBonus.id);
+    // Confetti for bonus XP
+    const key = `bonus-${dailyBonus.id}-${Date.now()}`;
+    lastConfettiKey.current = key;
+    setShowConfetti(true);
   };
 
   const currentWeek = getWeekForDay(progress.currentDay);
@@ -227,7 +251,12 @@ export default function Dashboard() {
           </GlassCard>
 
           {/* Bonus challenge — secondary action, below primary tracker */}
-          <BonusChallengeCard challenge={dailyBonus} isCompleted={bonusDone} pathType={path} onComplete={() => completeBonusChallenge(dailyBonus.id)} />
+          <BonusChallengeCard
+            challenge={dailyBonus}
+            isCompleted={bonusDone}
+            pathType={path}
+            onComplete={handleBonusComplete}
+          />
 
           {/* Free user banner */}
           {!isPro && (
@@ -330,6 +359,12 @@ export default function Dashboard() {
         pathType={path}
         onClose={() => setSelected(null)}
         onComplete={handleComplete}
+      />
+
+      {/* Confetti overlay — fires on milestones and bonus XP */}
+      <ConfettiOverlay
+        visible={showConfetti}
+        onFinish={() => setShowConfetti(false)}
       />
     </View>
   );

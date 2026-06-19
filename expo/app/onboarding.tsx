@@ -1,8 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import * as StoreReview from "expo-store-review";
 import {
   Bell,
   Check,
@@ -58,7 +56,6 @@ const PATHS: { value: PathType; icon: typeof MessageCircle }[] = [
 ];
 
 const TOTAL_SCREENS = 6;
-const STORE_REVIEW_SHOWN_KEY = "boldshift_store_review_shown";
 
 export default function Onboarding() {
   const router = useRouter();
@@ -111,17 +108,6 @@ export default function Onboarding() {
     }
     selectPath(selectedPath, null, fears[0] ?? null, goals[0] ?? null);
     if (!isPro) setShowPaywallAfterOnboarding(true);
-
-    // Request store review after first onboarding — never auto-show again
-    AsyncStorage.getItem(STORE_REVIEW_SHOWN_KEY).then((shown) => {
-      if (!shown) {
-        AsyncStorage.setItem(STORE_REVIEW_SHOWN_KEY, "true").catch(() => {});
-        setTimeout(() => {
-          StoreReview.requestReview().catch(() => {});
-        }, 1200);
-      }
-    });
-
     router.replace("/(tabs)/journey");
   };
 

@@ -10,6 +10,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ProgressProvider } from "@/providers/ProgressProvider";
 import { SubscriptionProvider } from "@/providers/SubscriptionProvider";
@@ -28,15 +29,16 @@ function RootLayoutNav() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
-          animation: "slide_from_right",
+          animation: Platform.OS === "ios" ? "slide_from_right" : "fade_from_bottom",
+          animationDuration: 280,
         }}
       >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="paywall" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
-        <Stack.Screen name="privacy" options={{ animation: "slide_from_right" }} />
-        <Stack.Screen name="terms" options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="index" options={{ animation: "fade", animationDuration: 200 }} />
+        <Stack.Screen name="onboarding" options={{ animation: "fade", animationDuration: 300 }} />
+        <Stack.Screen name="(tabs)" options={{ animation: "fade", animationDuration: 240 }} />
+        <Stack.Screen name="paywall" options={{ presentation: "modal", animation: "slide_from_bottom", animationDuration: 260 }} />
+        <Stack.Screen name="privacy" options={{ animationDuration: 260 }} />
+        <Stack.Screen name="terms" options={{ animationDuration: 260 }} />
       </Stack>
     </>
   );

@@ -1,5 +1,5 @@
 import { Flame } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import { Text, View } from "react-native";
 import GlassCard from "@/components/GlassCard";
 import { FONT, PATH_THEME } from "@/constants/theme";
@@ -14,19 +14,44 @@ interface Props {
 
 const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
-/** A simple 5-week heatmap that highlights the most recent `streak` days. */
+/** A 5-week heatmap that highlights the most recent `streak` days, properly aligned by day-of-week. */
 export default function StreakCalendar({ streak, longestStreak, pathType }: Props) {
   const { colors } = useTheme();
   const theme = PATH_THEME[pathType];
   const totalCells = 35;
-  // Mark the trailing `streak` cells (ending today) as active.
-  const today = new Date();
-  const todayIndex = totalCells - 1;
-  const cells = Array.from({ length: totalCells }, (_, i) => {
-    const distanceFromToday = todayIndex - i;
-    const active = distanceFromToday >= 0 && distanceFromToday < streak;
-    return active;
-  });
+
+  /** Build 5 rows × 7 columns with correct day-of-week offset so active cells align under the right day letter. */
+  const rows = useMemo(() => {
+    const today = new Date();
+    const todayDow = today.getDay(); // 0=Sun … 6=Sat
+
+    // The cell totalCells-1 positions before today lands at firstCellDow.
+    const firstCellDow = (todayDow - (totalCells - 1) + 70) % 7;
+
+    // Build a flat array: true = active streak day, false = inactive
+    const cells: boolean[] = Array.from({ length: totalCells }, (_, i) => {
+      const distanceFromToday = totalCells - 1 - i;
+      return distanceFromToday >= 0 && distanceFromToday < streak;
+    });
+
+    // Partition into 5 rows of 7, inserting empty placeholders for firstCellDow offset
+    const rowsResult: boolean[][] = [];
+    let cellIdx = 0;
+
+    for (let row = 0; row < 5; row++) {
+      const rowCells: boolean[] = [];
+      for (let col = 0; col < 7; col++) {
+        if (row === 0 && col < firstCellDow) {
+          rowCells.push(false);
+        } else if (cellIdx < totalCells) {
+          rowCells.push(cells[cellIdx]);
+          cellIdx++;
+        }
+      }
+      rowsResult.push(rowCells);
+    }
+    return rowsResult;
+  }, [streak, totalCells]);
 
   return (
     <GlassCard style={{ padding: 16 }}>
@@ -40,7 +65,8 @@ export default function StreakCalendar({ streak, longestStreak, pathType }: Prop
         </Text>
       </View>
 
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+      {/* Day-of-week headers */}
+      <View style={{ flexDirection: "row", marginBottom: 8 }}>
         {DAYS.map((d, i) => (
           <Text key={i} style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 10, width: 30, textAlign: "center" }}>
             {d}
@@ -48,18 +74,23 @@ export default function StreakCalendar({ streak, longestStreak, pathType }: Prop
         ))}
       </View>
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5, justifyContent: "space-between" }}>
-        {cells.map((active, i) => (
-          <View
-            key={i}
-            style={{
-              width: 30,
-              height: 22,
-              borderRadius: 6,
-              backgroundColor: active ? theme.color : colors.secondary,
-              opacity: active ? 1 : 0.5,
-            }}
-          />
+      {/* 5 rows × 7 columns, left-aligned */}
+      <View style={{ gap: 5 }}>
+        {rows.map((row, ri) => (
+          <View key={ri} style={{ flexDirection: "row", gap: 5 }}>
+            {row.map((active, ci) => (
+              <View
+                key={ci}
+                style={{
+                  width: 30,
+                  height: 22,
+                  borderRadius: 6,
+                  backgroundColor: active ? theme.color : colors.secondary,
+                  opacity: active ? 1 : 0.5,
+                }}
+              />
+            ))}
+          </View>
         ))}
       </View>
 
