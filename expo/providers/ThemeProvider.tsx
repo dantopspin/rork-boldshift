@@ -7,7 +7,7 @@ const STORAGE_KEY = "boldshift_theme";
 type Mode = "dark" | "light";
 
 export const [ThemeProvider, useTheme] = createContextHook(() => {
-  const [mode, setMode] = useState<Mode>("dark");
+  const [mode, setMode] = useState<Mode>("light");
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
