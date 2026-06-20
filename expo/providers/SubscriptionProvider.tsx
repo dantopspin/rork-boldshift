@@ -172,12 +172,14 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           } catch { /* ignore — fall through to error */ }
         }
 
-        const pkg = plan === "pro_weekly"
-          ? currentOfferings?.current?.weekly
-          : currentOfferings?.current?.monthly;
+        const wantedType = plan === "pro_weekly" ? "WEEKLY" : "MONTHLY";
+        const pkg = currentOfferings?.current?.availablePackages?.find(
+          (p) => p.packageType === wantedType,
+        );
 
         if (!pkg) {
-          console.error(`No ${plan} package found in current offering. Available: ${Object.keys(currentOfferings?.current ?? {}).join(", ") || "none"}`);
+          const available = currentOfferings?.current?.availablePackages?.map((p) => p.packageType).join(", ") ?? "none";
+          console.error(`No ${plan} package found. Wanted packageType=${wantedType}. Available packageTypes: ${available}`);
           return "error";
         }
 
