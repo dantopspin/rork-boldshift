@@ -172,14 +172,16 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           } catch { /* ignore — fall through to error */ }
         }
 
-        const wantedType = plan === "pro_weekly" ? "WEEKLY" : "MONTHLY";
+        // Search by identifier (lookup_key) — RevenueCat Test Store uses CUSTOM type
+        // for all packages, so packageType is unreliable. Identifier is always correct.
+        const wantedKey = plan === "pro_weekly" ? "weekly" : "monthly";
         const pkg = currentOfferings?.current?.availablePackages?.find(
-          (p) => p.packageType === wantedType,
+          (p) => p.identifier === wantedKey,
         );
 
         if (!pkg) {
-          const available = currentOfferings?.current?.availablePackages?.map((p) => p.packageType).join(", ") ?? "none";
-          console.error(`No ${plan} package found. Wanted packageType=${wantedType}. Available packageTypes: ${available}`);
+          const available = currentOfferings?.current?.availablePackages?.map((p) => `${p.identifier}(${p.packageType})`).join(", ") ?? "none";
+          console.error(`No ${plan} package found. Wanted identifier=${wantedKey}. Available: ${available}`);
           return "error";
         }
 
