@@ -1,10 +1,19 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { BookOpen, Home, Trophy, User } from "lucide-react-native";
-import React from "react";
+import React, { memo, useMemo } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { ACCENT, FONT } from "@/constants/theme";
 import { useTheme } from "@/providers/ThemeProvider";
+
+const TabBarBg = memo(function TabBarBg({ isDark, colors }: { isDark: boolean; colors: { glassBg: string; glassBorder: string } }) {
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <BlurView intensity={40} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassBg, borderTopWidth: 1, borderTopColor: colors.glassBorder }]} />
+    </View>
+  );
+});
 
 export default function TabLayout() {
   const { colors, isDark } = useTheme();
@@ -15,6 +24,8 @@ export default function TabLayout() {
     journal: colors.primary,
     profile: ACCENT.assertiveness,
   };
+
+  const memoBg = useMemo(() => () => <TabBarBg isDark={isDark} colors={colors} />, [isDark, colors]);
 
   return (
     <Tabs
@@ -33,12 +44,7 @@ export default function TabLayout() {
           paddingTop: 8,
         },
         tabBarLabelStyle: { fontFamily: FONT.medium, fontSize: 11 },
-        tabBarBackground: () => (
-          <View style={StyleSheet.absoluteFill}>
-            <BlurView intensity={40} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassBg, borderTopWidth: 1, borderTopColor: colors.glassBorder }]} />
-          </View>
-        ),
+        tabBarBackground: memoBg,
       })}
     >
       <Tabs.Screen

@@ -10,6 +10,7 @@ interface Props {
   streak: number;
   longestStreak: number;
   pathType: PathType | null;
+  completedDates?: string[];
 }
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -17,35 +18,47 @@ const ROWS = 5;
 const COLS = 7;
 const TOTAL_CELLS = ROWS * COLS; // 35
 
+function dateToISO(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
 /**
- * A 5-week heat-map calendar grid (Sun–Sat) that highlights the most recent
- * `streak` days. Today always sits at the last row + today's day-of-week column;
- * cells before today that fall within the streak are filled with the path colour.
+ * A 5-week heat-map calendar grid (Sun–Sat) that highlights days where the
+ * user completed a challenge. Today always sits at the last row + today's
+ * day-of-week column.
  */
-const StreakCalendar = memo(function StreakCalendar({ streak, longestStreak, pathType }: Props) {
+const StreakCalendar = memo(function StreakCalendar({ streak, longestStreak, pathType, completedDates }: Props) {
   const { colors } = useTheme();
   const resolvedPath = (pathType ?? "introvert") as PathType;
   const theme = PATH_THEME[resolvedPath];
 
+  const completedSet = useMemo(() => new Set(completedDates ?? []), [completedDates]);
+
   const rows = useMemo(() => {
     const today = new Date();
     const todayDow = today.getDay(); // 0 = Sun … 6 = Sat
-    // Today sits at flat-index 28 + todayDow (row 4, col todayDow)
-    const todayFlat = 28 + todayDow;
+    const todayFlat = 28 + todayDow; // row 4, col todayDow
+
+    const dates: string[] = [];
+    for (let i = 0; i < TOTAL_CELLS; i++) {
+      const daysAgo = todayFlat - i;
+      const d = new Date(today);
+      d.setDate(d.getDate() - daysAgo);
+      dates.push(dateToISO(d));
+    }
 
     const result: boolean[][] = [];
     for (let r = 0; r < ROWS; r++) {
       const rowCells: boolean[] = [];
       for (let c = 0; c < COLS; c++) {
         const flatIndex = r * COLS + c;
-        const daysAgo = todayFlat - flatIndex;
-        const active = daysAgo >= 0 && daysAgo < streak;
-        rowCells.push(active);
+        const dateStr = dates[flatIndex]!;
+        rowCells.push(completedSet.has(dateStr));
       }
       result.push(rowCells);
     }
     return result;
-  }, [streak]);
+  }, [completedSet]);
 
   return (
     <GlassCard style={{ padding: 16 }}>

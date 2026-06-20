@@ -55,6 +55,26 @@ if (apiKey) {
 }
 
 /**
+ * Waits for the "pro" entitlement to appear in customer info, retrying up to
+ * `retries` times with a `delayMs` pause between attempts. Returns true if
+ * found, false otherwise.
+ */
+async function waitForEntitlement(retries = 5, delayMs = 800): Promise<{ found: boolean; info: CustomerInfo }> {
+  for (let i = 0; i < retries; i++) {
+    const info = await Purchases.getCustomerInfo();
+    const active = Object.keys(info.entitlements.active);
+    if (active.includes("pro")) {
+      return { found: true, info };
+    }
+    if (i < retries - 1) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  const info = await Purchases.getCustomerInfo();
+  return { found: false, info };
+}
+
+/**
  * RevenueCat-backed subscription state. Offerings are prefetched at module load
  * and refreshed via react-query; purchase/restore return success so the UI can
  * react correctly.
@@ -122,14 +142,16 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, []);
 
   /**
-   * Attempt a purchase. Returns the result string for the UI to act on:
-   * "success" — purchase completed and "pro" entitlement active.
+   * Attempt a purchase. Returns a result for the UI to act on:
+   * "success" — purchase completed and "pro" entitlement confirmed active.
    * "cancelled" — user dismissed the payment sheet.
-   * "error" — package missing or purchase failed for another reason.
+   * "error" — package missing, purchase failed, or entitlement not confirmed.
+   * "pending" — purchase went through but entitlement still propagating (rare).
    */
   const purchase = useCallback(
-    async (plan: "pro_monthly" | "pro_weekly"): Promise<"success" | "cancelled" | "error"> => {
+    async (plan: "pro_monthly" | "pro_weekly"): Promise<"success" | "cancelled" | "error" | "pending"> => {
       try {
+        // Ensure offerings are available — refresh if cache is stale
         const currentOfferings = offerings ?? _offeringsCache;
         const pkg = plan === "pro_weekly"
           ? currentOfferings?.current?.weekly
@@ -140,11 +162,12 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           return "error";
         }
 
-        const result = await Purchases.purchasePackage(pkg);
-        // Refresh customer info to get the freshest entitlements
-        const info = await Purchases.getCustomerInfo();
-        const active = Object.keys(info.entitlements.active);
-        if (active.includes("pro")) {
+        await Purchases.purchasePackage(pkg);
+
+        // Wait for the entitlement to propagate (RevenueCat can take a moment)
+        const { found, info } = await waitForEntitlement(5, 800);
+
+        if (found) {
           const entitlement = info.entitlements.active["pro"];
           const productId = entitlement?.productIdentifier ?? "";
           const resolvedTier: Tier = productId.toLowerCase().includes("weekly") ? "pro_weekly" : "pro_monthly";
@@ -153,7 +176,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           setShowPaywallAfterOnboarding(false);
           return "success";
         }
-        // Purchase went through but entitlement not found — still persist optimistically
+
+        // Purchase completed but entitlement not yet visible — still persist
+        // optimistically so the UI unlocks; the next syncTier will reconcile
         persist(plan);
         setShowPaywall(false);
         setShowPaywallAfterOnboarding(false);
@@ -173,8 +198,11 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const restore = useCallback(async (): Promise<boolean> => {
     try {
       const info = await Purchases.restorePurchases();
-      if (info.entitlements.active["pro"]) {
-        const productId = info.entitlements.active["pro"]?.productIdentifier ?? "";
+      const { found } = await waitForEntitlement(3, 600);
+      if (found || info.entitlements.active["pro"]) {
+        const productId = (info.entitlements.active["pro"]?.productIdentifier ?? found
+          ? (await Purchases.getCustomerInfo()).entitlements.active["pro"]?.productIdentifier
+          : "") ?? "";
         const plan: Tier = productId.toLowerCase().includes("weekly") ? "pro_weekly" : "pro_monthly";
         persist(plan);
         setShowPaywall(false);

@@ -132,6 +132,9 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
           newStreak = 1;
         }
         const newCompletedDays = [...prev.completedDays, day].sort((a, b) => a - b);
+        const newCompletedDates = prev.completedDates.includes(today)
+          ? prev.completedDates
+          : [...prev.completedDates, today];
         const nextIncompleteDay =
           Array.from({ length: 60 }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? 60;
         const newReflections = reflection
@@ -140,6 +143,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
         const updated: UserProgress = {
           ...prev,
           completedDays: newCompletedDays,
+          completedDates: newCompletedDates,
           currentDay: Math.max(nextIncompleteDay, prev.currentDay),
           streak: newStreak,
           longestStreak: Math.max(newStreak, prev.longestStreak),
@@ -251,6 +255,9 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       const newCompletedDays = prev.completedDays.includes(yesterdayDay)
         ? prev.completedDays
         : [...prev.completedDays, yesterdayDay].sort((a, b) => a - b);
+      const newCompletedDates = prev.completedDates.includes(yStr)
+        ? prev.completedDates
+        : [...prev.completedDates, yStr];
       const nextIncompleteDay =
         Array.from({ length: 60 }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? 60;
       // Recalculate streak: yesterday was completed, today is now the continuation point
@@ -260,6 +267,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       const updated: UserProgress = {
         ...prev,
         completedDays: newCompletedDays,
+        completedDates: newCompletedDates,
         currentDay: Math.max(nextIncompleteDay, prev.currentDay),
         streak: newStreak,
         longestStreak: Math.max(newStreak, prev.longestStreak),

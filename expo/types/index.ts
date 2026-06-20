@@ -31,6 +31,7 @@ export interface UserProgress {
   selectedPath: PathType | null;
   currentDay: number;
   completedDays: number[];
+  completedDates: string[];
   streak: number;
   longestStreak: number;
   startDate: string | null;
@@ -58,6 +59,7 @@ export const DEFAULT_PROGRESS: UserProgress = {
   selectedPath: null,
   currentDay: 1,
   completedDays: [],
+  completedDates: [],
   streak: 0,
   longestStreak: 0,
   startDate: null,

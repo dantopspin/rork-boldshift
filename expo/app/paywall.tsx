@@ -33,6 +33,7 @@ export default function Paywall() {
   const currentOffering = offerings?.current;
   const monthlyPackage = currentOffering?.monthly;
   const weeklyPackage = currentOffering?.weekly;
+  const packagesLoading = !currentOffering;
 
   // If offerings haven't loaded yet, still show the UI with fallback prices
   const monthlyPrice = monthlyPackage?.product?.priceString ?? "$14.99";
@@ -49,8 +50,11 @@ export default function Paywall() {
         router.back();
       } else if (result === "cancelled") {
         // User cancelled — no error message needed, just stay on paywall
+      } else if (result === "pending") {
+        // Purchase went through, entitlement propagating — close anyway
+        router.back();
       } else {
-        setPurchaseError("Purchase failed. Please check your connection and try again.");
+        setPurchaseError("Purchase could not be completed. Please try again.");
       }
     } catch {
       setPurchaseError("Something went wrong. Please try again.");
@@ -144,17 +148,25 @@ export default function Paywall() {
 
           {/* CTA */}
           <View style={{ marginTop: purchaseError ? 10 : 20 }}>
-            <AppButton
-              label={isPurchasing ? "Processing…" : "Continue with Pro"}
-              size="lg"
-              variant="gold"
-              fullWidth
-              onPress={handlePurchase}
-              disabled={isPurchasing}
-            />
-            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 17 }}>
-              Cancel anytime. No free trials.
-            </Text>
+            {packagesLoading ? (
+              <View style={{ alignItems: "center", paddingVertical: 16 }}>
+                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>Loading plans…</Text>
+              </View>
+            ) : (
+              <>
+                <AppButton
+                  label={isPurchasing ? "Processing…" : "Continue with Pro"}
+                  size="lg"
+                  variant="gold"
+                  fullWidth
+                  onPress={handlePurchase}
+                  disabled={isPurchasing || packagesLoading}
+                />
+                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 17 }}>
+                  Cancel anytime. No free trials.
+                </Text>
+              </>
+            )}
           </View>
 
           {/* Restore purchases */}

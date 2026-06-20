@@ -62,7 +62,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
   const [readyToComplete, setReadyToComplete] = useState<boolean>(false);
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
 
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(600)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
@@ -109,12 +109,20 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
       setMood("good");
       setReadyToComplete(isCompleted);
       setKeyboardHeight(0);
-      translateY.setValue(0);
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 260,
-        useNativeDriver: true,
-      }).start();
+      translateY.setValue(600);
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          speed: 12,
+          bounciness: 4,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else {
       backdropOpacity.setValue(0);
     }
