@@ -39,10 +39,15 @@ function prefetchOfferings(): Promise<PurchasesOfferings | null> {
   if (_offeringsPromise) return _offeringsPromise;
   _offeringsPromise = Purchases.getOfferings()
     .then((o) => {
-      _offeringsCache = o;
+      if (o?.current) {
+        _offeringsCache = o;
+      }
       return o;
     })
-    .catch(() => null)
+    .catch((err) => {
+      console.warn("RevenueCat offerings fetch failed:", err?.message ?? err);
+      return null;
+    })
     .finally(() => {
       _offeringsPromise = null;
     });
@@ -86,12 +91,14 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [showPaywallAfterOnboarding, setShowPaywallAfterOnboarding] = useState<boolean>(false);
 
   // Lightweight offerings query — uses the module-level cache as initialData
-  const { data: offerings } = useQuery({
+  const { data: offerings, isFetched: offeringsFetched } = useQuery({
     queryKey: ["rc-offerings"],
     queryFn: async (): Promise<PurchasesOfferings | null> => {
       try {
         const o = await Purchases.getOfferings();
-        _offeringsCache = o;
+        if (o?.current) {
+          _offeringsCache = o;
+        }
         return o;
       } catch {
         return _offeringsCache;
@@ -99,6 +106,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     },
     initialData: _offeringsCache,
     staleTime: 1000 * 60 * 10, // 10 min
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
   });
 
   // Fetch customer info to determine active entitlements
@@ -151,14 +160,24 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const purchase = useCallback(
     async (plan: "pro_monthly" | "pro_weekly"): Promise<"success" | "cancelled" | "error" | "pending"> => {
       try {
-        // Ensure offerings are available — refresh if cache is stale
-        const currentOfferings = offerings ?? _offeringsCache;
+        // Always fetch fresh offerings before purchase to ensure packages exist
+        let currentOfferings = offerings ?? _offeringsCache;
+        if (!currentOfferings?.current) {
+          try {
+            const fresh = await Purchases.getOfferings();
+            if (fresh?.current) {
+              _offeringsCache = fresh;
+              currentOfferings = fresh;
+            }
+          } catch { /* ignore — fall through to error */ }
+        }
+
         const pkg = plan === "pro_weekly"
           ? currentOfferings?.current?.weekly
           : currentOfferings?.current?.monthly;
 
         if (!pkg) {
-          console.error(`No ${plan} package found in current offering`);
+          console.error(`No ${plan} package found in current offering. Available: ${Object.keys(currentOfferings?.current ?? {}).join(", ") || "none"}`);
           return "error";
         }
 
@@ -230,9 +249,10 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       showPaywallAfterOnboarding,
       setShowPaywallAfterOnboarding,
       offerings,
+      offeringsFetched,
       purchase,
       restore,
     }),
-    [tier, isPro, maxDays, isLoaded, showPaywall, showPaywallAfterOnboarding, offerings, purchase, restore],
+    [tier, isPro, maxDays, isLoaded, showPaywall, showPaywallAfterOnboarding, offerings, offeringsFetched, purchase, restore],
   );
 });

@@ -24,7 +24,7 @@ type Plan = "pro_monthly" | "pro_weekly";
 export default function Paywall() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { purchase, restore, offerings } = useSubscription();
+  const { purchase, restore, offerings, offeringsFetched } = useSubscription();
   const [plan, setPlan] = useState<Plan>("pro_monthly");
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
   const [isRestoring, setIsRestoring] = useState<boolean>(false);
@@ -33,11 +33,12 @@ export default function Paywall() {
   const currentOffering = offerings?.current;
   const monthlyPackage = currentOffering?.monthly;
   const weeklyPackage = currentOffering?.weekly;
-  const packagesLoading = !currentOffering;
 
-  // If offerings haven't loaded yet, still show the UI with fallback prices
+  // Use real prices if available, otherwise fall back to configured defaults
   const monthlyPrice = monthlyPackage?.product?.priceString ?? "$14.99";
   const weeklyPrice = weeklyPackage?.product?.priceString ?? "$4.99";
+  // Only show loading if we haven't even tried yet; if fetch completed (success or fail) show the CTA
+  const packagesLoading = !currentOffering && !offeringsFetched;
 
   const handlePurchase = async (): Promise<void> => {
     if (isPurchasing) return;
@@ -146,27 +147,19 @@ export default function Paywall() {
             </Text>
           )}
 
-          {/* CTA */}
+          {/* CTA — always visible, purchase fetches packages on demand if needed */}
           <View style={{ marginTop: purchaseError ? 10 : 20 }}>
-            {packagesLoading ? (
-              <View style={{ alignItems: "center", paddingVertical: 16 }}>
-                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>Loading plans…</Text>
-              </View>
-            ) : (
-              <>
-                <AppButton
-                  label={isPurchasing ? "Processing…" : "Continue with Pro"}
-                  size="lg"
-                  variant="gold"
-                  fullWidth
-                  onPress={handlePurchase}
-                  disabled={isPurchasing || packagesLoading}
-                />
-                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 17 }}>
-                  Cancel anytime. No free trials.
-                </Text>
-              </>
-            )}
+            <AppButton
+              label={isPurchasing ? "Processing…" : packagesLoading ? "Loading…" : "Continue with Pro"}
+              size="lg"
+              variant="gold"
+              fullWidth
+              onPress={handlePurchase}
+              disabled={isPurchasing}
+            />
+            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 17 }}>
+              Cancel anytime. No free trials.
+            </Text>
           </View>
 
           {/* Restore purchases */}
