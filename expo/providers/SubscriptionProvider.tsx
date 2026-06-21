@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
-import Purchases, { type CustomerInfo, type PurchasesOfferings, LOG_LEVEL, PURCHASES_ERROR_CODE } from "react-native-purchases";
+import Purchases, { type CustomerInfo, type PurchasesOfferings, LOG_LEVEL, PURCHASES_ERROR_CODE, type PurchasesError } from "react-native-purchases";
 import { FREE_DAYS, TOTAL_DAYS } from "@/types";
 
 const STORAGE_KEY = "boldshift_subscription";
@@ -90,7 +90,8 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   const [showPaywall, setShowPaywall] = useState<boolean>(false);
   const [showPaywallAfterOnboarding, setShowPaywallAfterOnboarding] = useState<boolean>(false);
 
-  // Lightweight offerings query — uses the module-level cache as initialData
+  // Lightweight offerings query — uses the module-level cache as placeholderData
+  // so the paywall shows prices immediately; the real fetch runs once on mount.
   const { data: offerings, isFetched: offeringsFetched } = useQuery({
     queryKey: ["rc-offerings"],
     queryFn: async (): Promise<PurchasesOfferings | null> => {
@@ -105,7 +106,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       }
     },
     placeholderData: _offeringsCache ?? undefined,
-    staleTime: 0, // always fetch fresh on mount so isFetched flips quickly
+    staleTime: 5 * 60 * 1000, // 5 min — offerings rarely change during a session
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 4000),
   });
@@ -207,11 +208,30 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         setShowPaywallAfterOnboarding(false);
         return "success";
       } catch (e: unknown) {
-        const err = e as { userCancelled?: boolean; code?: unknown; userCancelError?: boolean };
-        if (err.userCancelled === true || err.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        // RevenueCat RN bridge sends `code` as a number, but the enum values are
+        // strings ("1", "2", …). Normalise to string before comparing.
+        const err = e as PurchasesError;
+        const errorCode = String(err.code ?? "");
+        const isCancelled =
+          err.userCancelled === true ||
+          errorCode === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR;
+        const isPending =
+          errorCode === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR;
+
+        if (isCancelled) {
           return "cancelled";
         }
-        console.error("Purchase failed", e);
+        if (isPending) {
+          // Purchase is in-flight (e.g. "Ask to Buy") — treat as success so
+          // RevenueCat delivers the entitlement when it clears.
+          persist(plan);
+          setShowPaywall(false);
+          setShowPaywallAfterOnboarding(false);
+          return "pending";
+        }
+        console.error(
+          `Purchase failed (code=${errorCode}): ${err.message || "unknown"}`,
+        );
         return "error";
       }
     },
