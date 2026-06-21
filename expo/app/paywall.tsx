@@ -37,8 +37,8 @@ export default function Paywall() {
   // Use real prices if available, otherwise fall back to configured defaults
   const monthlyPrice = monthlyPackage?.product?.priceString ?? "$14.99";
   const weeklyPrice = weeklyPackage?.product?.priceString ?? "$4.99";
-  // Only show loading if we haven't even tried yet; if fetch completed (success or fail) show the CTA
-  const packagesLoading = !currentOffering && !offeringsFetched;
+  // Show loading only when we have no data AND the query hasn't completed yet
+  const packagesLoading = !currentOffering && !offeringsFetched && !offerings;
 
   const handlePurchase = async (): Promise<void> => {
     if (isPurchasing) return;

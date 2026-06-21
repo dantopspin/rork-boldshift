@@ -104,10 +104,10 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         return _offeringsCache;
       }
     },
-    initialData: _offeringsCache,
-    staleTime: 1000 * 60 * 10, // 10 min
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
+    placeholderData: _offeringsCache ?? undefined,
+    staleTime: 0, // always fetch fresh on mount so isFetched flips quickly
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 4000),
   });
 
   // Fetch customer info to determine active entitlements
