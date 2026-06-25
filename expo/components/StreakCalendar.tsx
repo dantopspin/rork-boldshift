@@ -34,8 +34,14 @@ const StreakCalendar = memo(function StreakCalendar({ streak, longestStreak, pat
 
   const completedSet = useMemo(() => new Set(completedDates ?? []), [completedDates]);
 
+  // Cache today's index so the grid render can highlight it
+  const todayDow = new Date().getDay();
+  const todayFlat = 28 + todayDow; // row 4, col todayDow
+
   const rows = useMemo(() => {
-    const today = new Date();
+    const now = new Date();
+    // Normalize to midnight to avoid timezone edge-cases
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayDow = today.getDay(); // 0 = Sun … 6 = Sat
     const todayFlat = 28 + todayDow; // row 4, col todayDow
 
@@ -94,18 +100,23 @@ const StreakCalendar = memo(function StreakCalendar({ streak, longestStreak, pat
       <View style={{ gap: 5 }}>
         {rows.map((row, ri) => (
           <View key={ri} style={{ flexDirection: "row", gap: 5 }}>
-            {row.map((active, ci) => (
-              <View
-                key={ci}
-                style={{
-                  flex: 1,
-                  height: 26,
-                  borderRadius: 7,
-                  backgroundColor: active ? theme.color : colors.secondary,
-                  opacity: active ? 1 : 0.4,
-                }}
-              />
-            ))}
+            {row.map((active, ci) => {
+              const isToday = ri === 4 && ci === todayDow;
+              return (
+                <View
+                  key={ci}
+                  style={{
+                    flex: 1,
+                    height: 26,
+                    borderRadius: 7,
+                    backgroundColor: active ? theme.color : colors.secondary,
+                    opacity: active ? 1 : 0.4,
+                    borderWidth: isToday ? 2 : 0,
+                    borderColor: isToday ? theme.color : "transparent",
+                  }}
+                />
+              );
+            })}
           </View>
         ))}
       </View>

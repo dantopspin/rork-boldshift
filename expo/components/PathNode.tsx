@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, Crown, Lock, Star } from "lucide-react-native";
-import React, { memo, useRef } from "react";
+import React, { memo, useEffect, useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { ACCENT, FONT, PATH_THEME } from "@/constants/theme";
 import { triggerHaptic } from "@/lib/haptics";
@@ -31,6 +31,23 @@ const PathNode = memo(function PathNode({
   const { colors } = useTheme();
   const theme = PATH_THEME[pathType];
   const scale = useRef(new Animated.Value(1)).current;
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  // Gentle looping pulse for current day node
+  useEffect(() => {
+    if (status !== "current") {
+      pulse.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.08, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [status, pulse]);
 
   const handlePress = (): void => {
     if (status === "locked") return;
@@ -65,10 +82,26 @@ const PathNode = memo(function PathNode({
   };
 
   const isFilled = status === "completed" || status === "current";
+  const effectiveScale = status === "current" ? Animated.multiply(scale, pulse) : scale;
 
   return (
     <View style={{ alignItems: "center", gap: 4 }}>
-      <Animated.View style={{ transform: [{ scale }] }}>
+      <Animated.View style={{ transform: [{ scale: effectiveScale }] }}>
+        {/* Glow circle behind the node (Android-compatible, replaces shadows) */}
+        {isFilled && (
+          <View
+            style={{
+              position: "absolute",
+              top: -(SIZE * 0.25),
+              left: -(SIZE * 0.25),
+              width: SIZE * 1.5,
+              height: SIZE * 1.5,
+              borderRadius: (SIZE * 1.5) / 2,
+              backgroundColor: theme.color + "26",
+            }}
+            pointerEvents="none"
+          />
+        )}
         <Pressable
           onPress={handlePress}
           onPressIn={() => press(0.9)}
@@ -88,11 +121,6 @@ const PathNode = memo(function PathNode({
                 justifyContent: "center",
                 borderWidth: status === "current" ? 3 : 0,
                 borderColor: "#FFFFFF",
-                shadowColor: theme.color,
-                shadowOpacity: 0.5,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 3 },
-                elevation: 5,
               }}
             >
               {renderInner()}
@@ -134,6 +162,17 @@ const PathNode = memo(function PathNode({
           )}
         </Pressable>
       </Animated.View>
+      {/* Day label below each node */}
+      <Text
+        style={{
+          color: status === "current" ? theme.color : colors.mutedForeground,
+          fontFamily: FONT.medium,
+          fontSize: 10,
+          textAlign: "center",
+        }}
+      >
+        Day {day}
+      </Text>
     </View>
   );
 });

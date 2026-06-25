@@ -55,6 +55,7 @@ export default function AppButton({
   const scale = useRef(new Animated.Value(1)).current;
   const dims = SIZE_MAP[size];
   const [isPressed, setIsPressed] = useState<boolean>(false);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const press = (to: number): void => {
     Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
@@ -112,8 +113,16 @@ export default function AppButton({
     <Animated.View style={[{ transform: [{ scale }], width: fullWidth ? "100%" : undefined }, style]}>
       <Pressable
         onPress={handlePress}
-        onPressIn={() => { press(0.96); setIsPressed(true); }}
-        onPressOut={() => { press(1); setIsPressed(false); }}
+        onPressIn={() => {
+          press(0.96);
+          // 50ms gate prevents accidental color flashes during scroll
+          pressTimer.current = setTimeout(() => setIsPressed(true), 50);
+        }}
+        onPressOut={() => {
+          press(1);
+          if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+          setIsPressed(false);
+        }}
         disabled={disabled || loading}
         style={{ borderRadius: RADIUS.full }}
       >

@@ -42,7 +42,7 @@ export default function PressableScale({
       toValue: scaleTo,
       useNativeDriver: true,
       speed: 30,
-      bounciness: 8,
+      bounciness: 6,
     }).start();
   };
 
@@ -51,7 +51,7 @@ export default function PressableScale({
       toValue: 1,
       useNativeDriver: true,
       speed: 30,
-      bounciness: 12,
+      bounciness: 7,
     }).start();
   };
 
