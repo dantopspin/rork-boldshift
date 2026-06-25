@@ -445,7 +445,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                       </PressableScale>
 
                       {/* Reflection input */}
-                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>Reflection (optional)</Text>
+                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>Reflection</Text>
                       <TextInput
                         ref={inputRef}
                         value={text}
