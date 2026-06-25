@@ -1,16 +1,19 @@
 // template
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useTheme } from "@/providers/ThemeProvider";
 
 export default function ModalScreen() {
+  const { isDark } = useTheme();
+
   return (
-    <Modal animationType="fade" transparent={true} visible={true} onRequestClose={() => router.back()}>
+    <Modal animationType="slide" transparent={true} visible={true} onRequestClose={() => router.back()}>
       <Pressable style={styles.overlay} onPress={() => router.back()}>
         <View style={styles.modalContent}>
           <Text style={styles.title}>Modal</Text>
           <Text style={styles.description}>
-            This is an example modal with proper fade animation. You can edit it in app/modal.tsx.
+            This is an example modal with slide animation. You can edit it in app/modal.tsx.
           </Text>
 
           <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
@@ -19,8 +22,7 @@ export default function ModalScreen() {
         </View>
       </Pressable>
 
-      {/* Use a light status bar on iOS to account for the black space above the modal */}
-      <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
+      <StatusBar style={isDark ? "light" : "dark"} />
     </Modal>
   );
 }

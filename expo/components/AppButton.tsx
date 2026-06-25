@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -54,9 +54,10 @@ export default function AppButton({
   const { colors } = useTheme();
   const scale = useRef(new Animated.Value(1)).current;
   const dims = SIZE_MAP[size];
+  const [isPressed, setIsPressed] = useState<boolean>(false);
 
   const press = (to: number): void => {
-    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
   };
 
   const handlePress = (): void => {
@@ -111,8 +112,8 @@ export default function AppButton({
     <Animated.View style={[{ transform: [{ scale }], width: fullWidth ? "100%" : undefined }, style]}>
       <Pressable
         onPress={handlePress}
-        onPressIn={() => press(0.96)}
-        onPressOut={() => press(1)}
+        onPressIn={() => { press(0.96); setIsPressed(true); }}
+        onPressOut={() => { press(1); setIsPressed(false); }}
         disabled={disabled || loading}
         style={{ borderRadius: RADIUS.full }}
       >
@@ -124,8 +125,8 @@ export default function AppButton({
           <View
             style={[
               containerBase,
-              variant === "outline" && { borderWidth: 1.5, borderColor: colors.border, backgroundColor: "transparent" },
-              variant === "ghost" && { backgroundColor: "transparent" },
+              variant === "outline" && { borderWidth: 1.5, borderColor: colors.border, backgroundColor: isPressed ? colors.secondary : "transparent" },
+              variant === "ghost" && { backgroundColor: isPressed ? colors.secondary : "transparent" },
               variant === "destructive" && { backgroundColor: colors.destructive },
             ]}
           >

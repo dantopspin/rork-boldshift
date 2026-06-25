@@ -45,12 +45,13 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
     if (!visible || hasStarted.current) return;
     hasStarted.current = true;
 
+    const centerY = SCREEN_H / 2;
     const newParticles: Particle[] = Array.from({ length: PARTICLE_COUNT }, () => {
       const startX = Math.random() * SCREEN_W;
-      const drift = (Math.random() - 0.5) * 160;
+      const drift = (Math.random() - 0.5) * 200;
       return {
         x: new Animated.Value(startX),
-        y: new Animated.Value(-30 - Math.random() * 200),
+        y: new Animated.Value(centerY + (Math.random() - 0.5) * 40),
         rotation: new Animated.Value(0),
         opacity: new Animated.Value(1),
         scale: new Animated.Value(0),
@@ -64,18 +65,23 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
     particles.current = newParticles;
 
     const animations = newParticles.map((p) => {
-      const delay = Math.random() * 400;
-      const dur = 1600 + Math.random() * 1200;
-      const rotationTarget = (Math.random() - 0.5) * 3;
+      const delay = Math.random() * 300;
+      const burstUp = 50 + Math.random() * 100;
+      const burstDur = 300 + Math.random() * 200;
+      const fallDur = 1400 + Math.random() * 1200;
+      const rotationTarget = (Math.random() - 0.5) * 4;
       return Animated.parallel([
-        Animated.timing(p.x, { toValue: p.targetX, duration: dur, delay, useNativeDriver: true }),
-        Animated.timing(p.y, { toValue: SCREEN_H + 80, duration: dur, delay, useNativeDriver: true }),
-        Animated.timing(p.rotation, { toValue: rotationTarget, duration: dur, delay, useNativeDriver: true }),
+        Animated.timing(p.x, { toValue: p.targetX, duration: burstDur + fallDur, delay, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.timing(p.y, { toValue: centerY - burstUp, duration: burstDur, delay, useNativeDriver: true }),
+          Animated.timing(p.y, { toValue: SCREEN_H + 80, duration: fallDur, useNativeDriver: true }),
+        ]),
+        Animated.timing(p.rotation, { toValue: rotationTarget, duration: burstDur + fallDur, delay, useNativeDriver: true }),
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(p.scale, { toValue: 1, duration: 180, useNativeDriver: true }),
-          Animated.delay(dur - 600 - delay - 180),
-          Animated.timing(p.opacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+          Animated.timing(p.scale, { toValue: 1, duration: 150, useNativeDriver: true }),
+          Animated.delay(burstDur + fallDur - 400 - delay - 150),
+          Animated.timing(p.opacity, { toValue: 0, duration: 400, useNativeDriver: true }),
         ]),
       ]);
     });
@@ -85,6 +91,7 @@ export default function ConfettiOverlay({ visible, onFinish }: Props) {
     });
 
     return () => {
+      hasStarted.current = false;
       newParticles.forEach((p) => {
         p.x.stopAnimation();
         p.y.stopAnimation();
