@@ -63,6 +63,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
   const [showPhotoOptions, setShowPhotoOptions] = useState<boolean>(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [showValidationHint, setShowValidationHint] = useState<boolean>(false);
 
   const translateY = useRef(new Animated.Value(600)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -229,12 +230,18 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
   }, []);
 
   const handleComplete = useCallback((): void => {
+    const trimmed = text.trim();
+    if (trimmed.length < 5 && !photoUri) {
+      setShowValidationHint(true);
+      return;
+    }
+    setShowValidationHint(false);
     triggerHaptic("success");
     Keyboard.dismiss();
-    onComplete({ text: text.trim(), mood });
+    onComplete({ text: trimmed, mood });
     // Slide the sheet down — onClose will fire after the animation finishes
     dismiss();
-  }, [text, mood, onComplete, dismiss]);
+  }, [text, mood, photoUri, onComplete, dismiss]);
 
   if (!challenge) return null;
 
@@ -262,8 +269,8 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
         {/* Sheet */}
         <Animated.View style={{ transform: [{ translateY: sheetTranslate }] }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "position" : undefined}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
           >
             <View style={{ backgroundColor: colors.cardSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
               <SafeAreaView edges={["bottom"]}>
@@ -413,44 +420,61 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                           </View>
                         </View>
                       ) : showPhotoOptions ? (
-                        <View style={{ flexDirection: "row", gap: 10 }}>
+                        <View style={{ gap: 10 }}>
+                          <View style={{ flexDirection: "row", gap: 10 }}>
+                            <PressableScale
+                              onPress={pickFromCamera}
+                              style={{ flex: 1 }}
+                              innerStyle={{
+                                borderRadius: RADIUS.md,
+                                borderWidth: 1.5,
+                                borderColor: colors.border,
+                                borderStyle: "dashed",
+                                backgroundColor: colors.secondary,
+                                paddingVertical: 24,
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.color + "22", alignItems: "center", justifyContent: "center" }}>
+                                <Camera size={20} color={theme.color} />
+                              </View>
+                              <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 13 }}>Camera</Text>
+                            </PressableScale>
+                            <PressableScale
+                              onPress={pickFromGallery}
+                              style={{ flex: 1 }}
+                              innerStyle={{
+                                borderRadius: RADIUS.md,
+                                borderWidth: 1.5,
+                                borderColor: colors.border,
+                                borderStyle: "dashed",
+                                backgroundColor: colors.secondary,
+                                paddingVertical: 24,
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+                                <ImageIcon size={20} color={colors.mutedForeground} />
+                              </View>
+                              <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 13 }}>Gallery</Text>
+                            </PressableScale>
+                          </View>
                           <PressableScale
-                            onPress={pickFromCamera}
-                            style={{ flex: 1 }}
+                            onPress={() => {
+                              triggerHaptic("light");
+                              setShowPhotoOptions(false);
+                            }}
                             innerStyle={{
-                              borderRadius: RADIUS.md,
-                              borderWidth: 1.5,
+                              borderRadius: RADIUS.full,
+                              borderWidth: 1,
                               borderColor: colors.border,
-                              borderStyle: "dashed",
-                              backgroundColor: colors.secondary,
-                              paddingVertical: 24,
+                              paddingVertical: 10,
                               alignItems: "center",
-                              gap: 8,
                             }}
                           >
-                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.color + "22", alignItems: "center", justifyContent: "center" }}>
-                              <Camera size={20} color={theme.color} />
-                            </View>
-                            <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 13 }}>Camera</Text>
-                          </PressableScale>
-                          <PressableScale
-                            onPress={pickFromGallery}
-                            style={{ flex: 1 }}
-                            innerStyle={{
-                              borderRadius: RADIUS.md,
-                              borderWidth: 1.5,
-                              borderColor: colors.border,
-                              borderStyle: "dashed",
-                              backgroundColor: colors.secondary,
-                              paddingVertical: 24,
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
-                              <ImageIcon size={20} color={colors.mutedForeground} />
-                            </View>
-                            <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 13 }}>Gallery</Text>
+                            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>Cancel</Text>
                           </PressableScale>
                         </View>
                       ) : (
@@ -508,6 +532,16 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                           textAlignVertical: "top",
                         }}
                       />
+
+                      {/* Validation hint */}
+                      {showValidationHint && (
+                        <View style={{ padding: 12, borderRadius: 12, backgroundColor: ACCENT.milestone + "18", flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: ACCENT.milestone + "33", alignItems: "center", justifyContent: "center" }}>
+                            <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>!</Text>
+                          </View>
+                          <Text style={{ color: ACCENT.milestone, fontFamily: FONT.medium, fontSize: 12, flex: 1 }}>Add a quick note or photo to finish</Text>
+                        </View>
+                      )}
 
                       {/* Complete CTA */}
                       <AppButton

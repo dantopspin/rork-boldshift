@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
-import { Award, Check, Crown, Flame, Sparkles, X, Zap } from "lucide-react-native";
+import { Award, Check, Crown, Flame, Shield, Sparkles, X, Zap } from "lucide-react-native";
 import React, { useState } from "react";
 import { Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -37,6 +37,9 @@ export default function Paywall() {
   // Use real prices if available, otherwise fall back to configured defaults
   const monthlyPrice = monthlyPackage?.product?.priceString ?? "$14.99";
   const weeklyPrice = weeklyPackage?.product?.priceString ?? "$4.99";
+  // Calculate weekly equivalent from monthly for savings anchoring
+  const monthlyNum = monthlyPackage?.product?.price ?? 14.99;
+  const weeklyEquivalent = `$${(monthlyNum / 4).toFixed(2)}/wk`;
   // Show loading only when we have no data AND the query hasn't completed yet
   const packagesLoading = !currentOffering && !offeringsFetched && !offerings;
 
@@ -128,6 +131,7 @@ export default function Paywall() {
               onPress={() => { triggerHaptic("light"); setPlan("pro_monthly"); }}
               title="Monthly"
               price={`${monthlyPrice}/mo`}
+              secondaryPrice={weeklyEquivalent}
               subtitle="Best value"
               badge="POPULAR"
             />
@@ -156,8 +160,13 @@ export default function Paywall() {
               fullWidth
               onPress={handlePurchase}
               disabled={isPurchasing}
+              loading={isPurchasing}
             />
-            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 17 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10 }}>
+              <Shield size={12} color={ACCENT.success} />
+              <Text style={{ color: ACCENT.success, fontFamily: FONT.medium, fontSize: 11 }}>60-Day Money-Back Guarantee</Text>
+            </View>
+            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 6, lineHeight: 17 }}>
               Cancel anytime. No free trials.
             </Text>
           </View>
@@ -195,7 +204,7 @@ export default function Paywall() {
   );
 }
 
-function PlanOption({ active, onPress, title, price, subtitle, badge }: { active: boolean; onPress: () => void; title: string; price: string; subtitle: string; badge?: string }) {
+function PlanOption({ active, onPress, title, price, secondaryPrice, subtitle, badge }: { active: boolean; onPress: () => void; title: string; price: string; secondaryPrice?: string; subtitle: string; badge?: string }) {
   const { colors } = useTheme();
   return (
     <PressableScale
@@ -224,6 +233,9 @@ function PlanOption({ active, onPress, title, price, subtitle, badge }: { active
       </View>
       <View style={{ alignItems: "flex-end" }}>
         <Text style={{ color: colors.foreground, fontFamily: FONT.extrabold, fontSize: 16 }}>{price}</Text>
+        {secondaryPrice && (
+          <Text style={{ color: ACCENT.success, fontFamily: FONT.medium, fontSize: 11, marginTop: 1 }}>{secondaryPrice}</Text>
+        )}
         <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: active ? ACCENT.milestone : colors.border, alignItems: "center", justifyContent: "center", marginTop: 4, backgroundColor: active ? ACCENT.milestone : "transparent" }}>
           {active && <Check size={13} color="#FFF" strokeWidth={3} />}
         </View>
