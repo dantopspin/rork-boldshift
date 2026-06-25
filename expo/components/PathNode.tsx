@@ -41,8 +41,8 @@ const PathNode = memo(function PathNode({
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.08, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.04, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 1200, useNativeDriver: true }),
       ]),
     );
     loop.start();
@@ -88,16 +88,16 @@ const PathNode = memo(function PathNode({
     <View style={{ alignItems: "center", gap: 4 }}>
       <Animated.View style={{ transform: [{ scale: effectiveScale }] }}>
         {/* Glow circle behind the node (Android-compatible, replaces shadows) */}
-        {isFilled && (
+        {isFilled && status === "current" && (
           <View
             style={{
               position: "absolute",
-              top: -(SIZE * 0.25),
-              left: -(SIZE * 0.25),
-              width: SIZE * 1.5,
-              height: SIZE * 1.5,
-              borderRadius: (SIZE * 1.5) / 2,
-              backgroundColor: theme.color + "26",
+              top: -(SIZE * 0.18),
+              left: -(SIZE * 0.18),
+              width: SIZE * 1.36,
+              height: SIZE * 1.36,
+              borderRadius: (SIZE * 1.36) / 2,
+              backgroundColor: theme.color + "18",
             }}
             pointerEvents="none"
           />

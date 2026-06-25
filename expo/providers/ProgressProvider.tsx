@@ -347,6 +347,11 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     });
   }, []);
 
+  /**
+   * Sum XP from completedDays and completedBonusChallenges.
+   * progress.totalXP is already updated by completeDay / completeBonusChallenge,
+   * so we compute from the raw arrays to avoid double-counting.
+   */
   const getTotalXP = useCallback((): number => {
     const challenges = progress.selectedPath ? getChallengesForPath(progress.selectedPath) : [];
     const multiplier = progress.difficultyPreference
@@ -357,8 +362,8 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       return acc + Math.round((challenge?.baseXP ?? 10) * multiplier);
     }, 0);
     const bonusXP = progress.completedBonusChallenges.length * 5;
-    return mainXP + bonusXP + (progress.totalXP ?? 0);
-  }, [progress.selectedPath, progress.completedDays, progress.completedBonusChallenges.length, progress.totalXP, progress.difficultyPreference]);
+    return mainXP + bonusXP;
+  }, [progress.selectedPath, progress.completedDays, progress.completedBonusChallenges.length, progress.difficultyPreference]);
 
   const shouldShowCheckIn = useCallback((): boolean => {
     if (!progress.selectedPath || !progress.lastCompletedDate) return false;

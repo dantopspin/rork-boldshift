@@ -272,7 +272,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
         <Animated.View style={{ transform: [{ translateY: sheetTranslate }] }}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
           >
             <View style={{ backgroundColor: colors.cardSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
               <SafeAreaView edges={["bottom"]}>
@@ -290,6 +290,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                   scrollEventThrottle={16}
+                  contentInsetAdjustmentBehavior="automatic"
                   contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 20, gap: 12 }}
                 >
                   {/* Header row */}
