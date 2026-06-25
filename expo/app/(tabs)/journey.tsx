@@ -12,7 +12,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AnimatedProgressBar from "@/components/AnimatedProgressBar";
@@ -61,6 +61,9 @@ export default function Dashboard() {
   const [collapsedWeeks, setCollapsedWeeks] = useState<number[]>([]);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
 
+  // Track whether we should celebrate after the task modal finishes closing
+  const pendingCelebration = useRef<boolean>(false);
+
   const path = progress.selectedPath;
   const theme = path ? PATH_THEME[path] : PATH_THEME.introvert;
 
@@ -104,21 +107,53 @@ export default function Dashboard() {
     [challenges, progress.completedDays],
   );
 
+  // Stable callbacks
+  const handleConfettiFinish = useCallback((): void => {
+    setShowConfetti(false);
+  }, []);
+
+  /** Called from TaskModal after the dismiss animation finishes. */
+  const handleModalClose = useCallback((): void => {
+    const shouldCelebrate = pendingCelebration.current;
+    pendingCelebration.current = false;
+    setSelected(null);
+
+    if (shouldCelebrate) {
+      triggerHaptic("success");
+      // Tiny delay so the sheet is fully gone before confetti fires
+      setTimeout(() => {
+        setShowConfetti(true);
+      }, 100);
+    }
+  }, []);
+
+  /** Called when the user completes a challenge from inside TaskModal. */
+  const handleComplete = useCallback(
+    (reflection: { text: string; mood: Mood }): void => {
+      if (!selected) return;
+      const day = selected.day;
+      completeDay(day, reflection);
+
+      if (CELEBRATION_DAYS.has(day)) {
+        pendingCelebration.current = true;
+      }
+      // Note: we do NOT call setSelected(null) here.
+      // TaskModal's handleComplete calls dismiss() which animates the sheet down,
+      // then calls handleModalClose which sets selected to null and triggers confetti.
+    },
+    [selected, completeDay],
+  );
+
+  /** Called when the user completes the bonus challenge. */
+  const handleBonusComplete = useCallback((): void => {
+    completeBonusChallenge(dailyBonus.id);
+    triggerHaptic("success");
+    setShowConfetti(true);
+  }, [completeBonusChallenge, dailyBonus.id]);
+
   if (!isLoaded || !path) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
-
-  const handleComplete = (reflection: { text: string; mood: Mood }): void => {
-    if (selected) {
-      const day = selected.day;
-      completeDay(day, reflection);
-      setSelected(null);
-      if (CELEBRATION_DAYS.has(day)) {
-        triggerHaptic("success");
-        setShowConfetti(true);
-      }
-    }
-  };
 
   const currentWeek = getWeekForDay(progress.currentDay);
 
@@ -237,7 +272,6 @@ export default function Dashboard() {
           {/* ── Daily quote ── */}
           <GlassCard style={{ padding: 0, overflow: "hidden" }}>
             <View style={{ flexDirection: "row" }}>
-              {/* Accent strip */}
               <View style={{ width: 4, backgroundColor: theme.color + "88" }} />
               <View style={{ flex: 1, padding: 14 }}>
                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
@@ -288,11 +322,7 @@ export default function Dashboard() {
             challenge={dailyBonus}
             isCompleted={bonusDone}
             pathType={path}
-            onComplete={() => {
-              completeBonusChallenge(dailyBonus.id);
-              triggerHaptic("success");
-              setShowConfetti(true);
-            }}
+            onComplete={handleBonusComplete}
           />
 
           {/* ── Free user upgrade banner ── */}
@@ -431,11 +461,15 @@ export default function Dashboard() {
         isCompleted={selected ? progress.completedDays.includes(selected.day) : false}
         canComplete={canCompleteMainChallenge()}
         pathType={path}
-        onClose={() => setSelected(null)}
+        onClose={handleModalClose}
         onComplete={handleComplete}
       />
 
-      <ConfettiOverlay visible={showConfetti} onFinish={() => setShowConfetti(false)} />
+      {/* Dismiss-only close (when user drags down or taps backdrop without completing) */}
+      {/* We expose a separate onClose for the non-complete dismiss, but handleModalClose handles both cases.
+          The pending celebration flag distinguishes between them. */}
+
+      <ConfettiOverlay visible={showConfetti} onFinish={handleConfettiFinish} />
     </View>
   );
 }

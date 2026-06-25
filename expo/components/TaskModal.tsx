@@ -51,8 +51,8 @@ const DIFFICULTY_LABEL: Record<string, string> = { easy: "Easy", medium: "Medium
  * Phase 2 — Complete: shows mood selector + reflection input + "Complete Day X".
  * Skips Phase 1 entirely if the challenge is already completed.
  *
- * Keyboard handling: the sheet slides up when the keyboard opens so the
- * reflection input stays visible, and the ScrollView scrolls to the input.
+ * Dismiss behaviour: when the challenge is completed, the sheet slides down with a
+ * brief "Completed" banner visible during the animation — no snap-away glitch.
  */
 export default function TaskModal({ challenge, visible, isCompleted, canComplete, pathType, onClose, onComplete }: Props) {
   const { colors } = useTheme();
@@ -68,6 +68,9 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
   const inputRef = useRef<TextInput>(null);
   const keyboardY = useRef(new Animated.Value(0)).current;
 
+  // Guard against entrance animation re-firing while the sheet is dismissing
+  const closingRef = useRef<boolean>(false);
+
   // Track keyboard height
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -79,7 +82,6 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
           duration: 250,
           useNativeDriver: true,
         }).start();
-        // Scroll to the input after keyboard animation starts
         setTimeout(() => {
           scrollRef.current?.scrollToEnd({ animated: true });
         }, 180);
@@ -102,8 +104,10 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
     };
   }, [keyboardY]);
 
-  // Reset state on open / challenge change
+  // Entrance animation — skip if closing
   useEffect(() => {
+    if (closingRef.current) return;
+
     if (visible && challenge) {
       setText("");
       setMood("good");
@@ -114,7 +118,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
         Animated.spring(translateY, {
           toValue: 0,
           useNativeDriver: true,
-          speed: 12,
+          speed: 14,
           bounciness: 4,
         }),
         Animated.timing(backdropOpacity, {
@@ -123,26 +127,31 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
           useNativeDriver: true,
         }),
       ]).start();
-    } else {
+    } else if (!visible) {
       backdropOpacity.setValue(0);
     }
   }, [visible, challenge?.id, isCompleted]);
 
+  /** Slide the sheet down, then call onClose. */
   const dismiss = useCallback((): void => {
+    if (closingRef.current) return;
+    closingRef.current = true;
     Keyboard.dismiss();
+
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: 500,
-        duration: 240,
+        toValue: 600,
+        duration: 280,
         useNativeDriver: true,
       }),
       Animated.timing(backdropOpacity, {
         toValue: 0,
-        duration: 240,
+        duration: 280,
         useNativeDriver: true,
       }),
     ]).start(() => {
       translateY.setValue(0);
+      closingRef.current = false;
       onClose();
     });
   }, [translateY, backdropOpacity, onClose]);
@@ -159,7 +168,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+        if (gestureState.dy > 120 || gestureState.vy > 0.5) {
           dismiss();
         } else {
           Animated.spring(translateY, {
@@ -173,19 +182,20 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
     }),
   ).current;
 
-  if (!challenge) return null;
-
-  const blocked = !canComplete && !isCompleted;
-
-  const handleComplete = (): void => {
+  /** Called when the user taps "Complete Day X". */
+  const handleComplete = useCallback((): void => {
     triggerHaptic("success");
     Keyboard.dismiss();
     onComplete({ text: text.trim(), mood });
-  };
+    // Slide the sheet down — onClose will fire after the animation finishes
+    dismiss();
+  }, [text, mood, onComplete, dismiss]);
 
+  if (!challenge) return null;
+
+  const blocked = !canComplete && !isCompleted;
   const phaseOne = !readyToComplete && !isCompleted;
 
-  // Combine the pan-drag offset with the keyboard offset
   const sheetTranslate = Animated.add(translateY, keyboardY);
 
   return (
@@ -205,7 +215,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
           </TouchableWithoutFeedback>
         </Animated.View>
 
-        {/* Sheet — offset by both drag position and keyboard */}
+        {/* Sheet */}
         <Animated.View style={{ transform: [{ translateY: sheetTranslate }] }}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "position" : undefined}
@@ -213,7 +223,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
           >
             <View style={{ backgroundColor: colors.cardSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
               <SafeAreaView edges={["bottom"]}>
-                {/* Drag handle — always visible, carries PanResponder */}
+                {/* Drag handle */}
                 <View
                   {...panResponder.panHandlers}
                   style={{ alignItems: "center", paddingTop: 10, paddingBottom: 6 }}
