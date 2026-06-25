@@ -55,7 +55,7 @@ export default function Milestones() {
 
         <StreakCalendar streak={progress.streak} longestStreak={progress.longestStreak} pathType={progress.selectedPath} completedDates={progress.completedDates} />
 
-        {/* Achievements */}
+        {/* Achievements — 3-column badge grid */}
         <GlassCard style={{ padding: 16 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
             <Award size={16} color={ACCENT.milestone} />
@@ -64,35 +64,41 @@ export default function Milestones() {
             </Text>
           </View>
 
-          <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            {/* Unlocked badges */}
             {unlocked.map((a) => (
-              <View key={a.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: ACCENT.success + "12", borderWidth: 1, borderColor: ACCENT.success + "33" }}>
-                <LinearGradient colors={GOLD_GRADIENT} style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" }}>
+              <View key={a.id} style={{ flexBasis: "30%", flexGrow: 1, minWidth: 80, alignItems: "center", gap: 6 }}>
+                <LinearGradient colors={GOLD_GRADIENT} style={{ width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" }}>
                   <AchievementIconView icon={a.icon} size={20} color="#FFF" />
                 </LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>{a.name}</Text>
-                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12 }}>{a.description}</Text>
-                </View>
               </View>
             ))}
-
-            {locked.length > 0 && (
-              <>
-                <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 12, marginTop: 4 }}>Up next:</Text>
-                {locked.slice(0, 3).map((a) => (
-                  <View key={a.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary, opacity: 0.7 }}>
-                    <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.muted }}>
-                      <AchievementIconView icon={a.icon} size={20} color={colors.mutedForeground} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>{a.name}</Text>
-                      <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12 }}>{a.description}</Text>
-                    </View>
+            {/* Locked badges with progress bars */}
+            {locked.map((a) => {
+              const current =
+                a.progressMetric === "days"
+                  ? completedCount
+                  : a.progressMetric === "streak"
+                    ? progress.longestStreak
+                    : Math.min(completedCount, progress.longestStreak);
+              const progressFrac = Math.min(1, current / a.target);
+              return (
+                <View key={a.id} style={{ flexBasis: "30%", flexGrow: 1, minWidth: 80, alignItems: "center", gap: 6, opacity: 0.4 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.muted }}>
+                    <AchievementIconView icon={a.icon} size={20} color={colors.mutedForeground} />
                   </View>
-                ))}
-              </>
-            )}
+                  {/* Mini progress bar */}
+                  <View style={{ width: "100%", maxWidth: 44, gap: 2 }}>
+                    <View style={{ width: "100%", height: 4, backgroundColor: colors.secondary, borderRadius: 2, overflow: "hidden" }}>
+                      <View style={{ width: `${Math.round(progressFrac * 100)}%` as `${number}%`, height: "100%", backgroundColor: colors.mutedForeground, borderRadius: 2 }} />
+                    </View>
+                    <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 9, textAlign: "center" }}>
+                      {current}/{a.target}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </GlassCard>
 
@@ -114,10 +120,10 @@ export default function Milestones() {
                     gap: 12,
                     padding: 12,
                     borderRadius: 14,
-                    backgroundColor: colors.secondary,
+                    backgroundColor: isUnlocked ? colors.secondary : colors.muted,
                     borderWidth: 1,
-                    borderColor: isUnlocked ? ACCENT.milestone + "80" : "transparent",
-                    opacity: isUnlocked ? 1 : 0.6,
+                    borderColor: isUnlocked ? ACCENT.milestone + "80" : colors.muted,
+                    opacity: isUnlocked ? 1 : 0.4,
                   }}
                 >
                   {isUnlocked ? (

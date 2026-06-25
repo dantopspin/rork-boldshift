@@ -18,7 +18,7 @@ import {
   TrendingUp,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, ScrollView, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import GlassCard from "@/components/GlassCard";
 import PressableScale from "@/components/PressableScale";
@@ -72,14 +72,18 @@ export default function Profile() {
     await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID).catch(() => {});
   }, []);
 
-  // Sync toggle with actual scheduled state on mount
+  // Sync toggle with actual scheduled state & permissions on mount
   useEffect(() => {
-    Notifications.getAllScheduledNotificationsAsync()
-      .then((scheduled) => {
-        const hasReminder = scheduled.some((n) => n.identifier === DAILY_REMINDER_ID);
-        setNotificationsOn(hasReminder);
-      })
-      .catch(() => {});
+    (async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") {
+        setNotificationsOn(false);
+        return;
+      }
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      const hasReminder = scheduled.some((n) => n.identifier === DAILY_REMINDER_ID);
+      setNotificationsOn(hasReminder);
+    })().catch(() => {});
   }, []);
 
   const toggleNotifications = async (): Promise<void> => {
@@ -127,7 +131,7 @@ export default function Profile() {
       router.push("/paywall");
       return;
     }
-    Alert.alert("Choose a Path", "Switching paths will reset your current progress.", [
+    Alert.alert("Choose a Path", "This will permanently delete your current 60-day progress and cannot be undone.", [
       { text: "Cancel", style: "cancel" },
       ...otherPaths.map((p) => ({
         text: PATH_THEME[p].label,
@@ -382,6 +386,7 @@ export default function Profile() {
               <Award size={48} color="#FFF" />
             </LinearGradient>
             <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 18 }}>Switching path…</Text>
+            <ActivityIndicator size="small" color={theme.color} />
           </View>
         )}
       </ScrollView>
