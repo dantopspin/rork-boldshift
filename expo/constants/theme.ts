@@ -23,7 +23,7 @@ export interface Palette {
 
 export const DARK: Palette = {
   background: "#0D0F12",
-  backgroundGradient: ["#0D0F12", "#14181F", "#0D0F12"],
+  backgroundGradient: ["#0D0F12", "#1B1F26", "#0D0F12"],
   card: "rgba(28,33,41,0.7)",
   cardSolid: "#171A1F",
   glassBg: "rgba(26,31,40,0.72)",
@@ -33,6 +33,7 @@ export const DARK: Palette = {
   mutedForeground: "#8A8F99",
   secondary: "#242932",
   border: "#2D323B",
+  // `primary` matches the Introvert path color; use PATH_THEME[path].color for journey-related UI.
   primary: "#1A8CFF",
   primaryForeground: "#08111C",
   destructive: "#E0483D",
@@ -44,7 +45,7 @@ export const LIGHT: Palette = {
   card: "rgba(255,255,255,0.85)",
   cardSolid: "#FFFFFF",
   glassBg: "rgba(255,255,255,0.82)",
-  glassBorder: "rgba(0,0,0,0.06)",
+  glassBorder: "rgba(0,0,0,0.15)",
   foreground: "#161A21",
   muted: "#E6E9EF",
   mutedForeground: "#6B7280",

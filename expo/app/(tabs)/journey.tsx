@@ -471,13 +471,29 @@ export default function Dashboard() {
                       </Text>
                     </View>
                     <View>
-                      <Text style={{
-                        color: week.isCompleted ? ACCENT.milestone : isCurrentWeek ? colors.foreground : colors.mutedForeground,
-                        fontFamily: FONT.bold,
-                        fontSize: 13,
-                      }}>
-                        {week.name}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text style={{
+                          color: week.isCompleted ? ACCENT.milestone : isCurrentWeek ? colors.foreground : colors.mutedForeground,
+                          fontFamily: FONT.bold,
+                          fontSize: 13,
+                        }}>
+                          {week.name || `Week ${week.week}`}
+                        </Text>
+                        {isCurrentWeek && !week.isCompleted && (
+                          <View style={{
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 5,
+                            backgroundColor: theme.color + "22",
+                            borderWidth: 1,
+                            borderColor: theme.color + "44",
+                          }}>
+                            <Text style={{ color: theme.color, fontFamily: FONT.bold, fontSize: 9 }}>
+                              CURRENT
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, marginTop: 1 }}>
                         {week.completedCount}/{week.challenges.length} days
                       </Text>

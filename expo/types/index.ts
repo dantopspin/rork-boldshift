@@ -19,6 +19,7 @@ export interface Challenge {
   xpReward: number;
   category: string;
   path: PathType;
+  proTip: string;
 }
 
 export interface Reflection {
@@ -52,7 +53,7 @@ export interface UserProgress {
 
 export type NodeStatus = "completed" | "current" | "locked" | "pro-locked";
 
-export const MILESTONES = [15, 30, 45, 60] as const;
+export const MILESTONES = [10, 20, 30, 40, 50, 60] as const;
 export const TOTAL_DAYS = 60;
 export const FREE_DAYS = 15;
 
