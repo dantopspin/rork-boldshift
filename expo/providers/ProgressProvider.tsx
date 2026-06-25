@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_PROGRESS,
   DifficultyPreference,
+  DIFFICULTY_MULTIPLIER,
   Mood,
   PathType,
   SocialFear,
@@ -12,6 +13,7 @@ import {
 } from "@/types";
 import { getUnlockedAchievements } from "@/data/achievements";
 import { getChallengesForPath } from "@/data/challenges";
+import { getCurrentLevel } from "@/data/xpLevels";
 
 const STORAGE_KEY = "boldshift_progress";
 const FLAGS_KEY = "boldshift_flags";
@@ -36,6 +38,7 @@ const yesterdayStr = (): string => {
 export const [ProgressProvider, useProgress] = createContextHook(() => {
   const [progress, setProgress] = useState<UserProgress>(DEFAULT_PROGRESS);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [showLevelUp, setShowLevelUp] = useState<boolean>(false);
 
   // Load persisted progress
   useEffect(() => {
@@ -68,7 +71,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
             unlockedAchievements: parsed.unlockedAchievements ?? [],
             completedBonusChallenges: prunedBonuses,
             reflections: parsed.reflections ?? {},
-            legacyXP: parsed.legacyXP ?? 0,
+            totalXP: parsed.totalXP ?? 0,
           });
         }
       } catch (e) {
@@ -116,6 +119,17 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       : updated.unlockedAchievements;
   }, []);
 
+  /** Compute the effective XP reward from baseXP using the user's difficulty preference multiplier. */
+  const computeXPReward = useCallback(
+    (baseXP: number): number => {
+      const multiplier = progress.difficultyPreference
+        ? DIFFICULTY_MULTIPLIER[progress.difficultyPreference]
+        : 1.0;
+      return Math.round(baseXP * multiplier);
+    },
+    [progress.difficultyPreference],
+  );
+
   const selectPath = useCallback(
     (
       path: PathType,
@@ -141,7 +155,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
   );
 
   const completeDay = useCallback(
-    (day: number, reflection?: { text: string; mood: Mood }): void => {
+    (day: number, reflection?: { text: string; mood: Mood; photoUri?: string }): void => {
       const today = todayStr();
       setProgress((prev) => {
         if (prev.completedDays.includes(day)) return prev;
@@ -161,8 +175,33 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
         const nextIncompleteDay =
           Array.from({ length: 60 }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? 60;
         const newReflections = reflection
-          ? { ...prev.reflections, [day]: { ...reflection, timestamp: new Date().toISOString() } }
+          ? {
+              ...prev.reflections,
+              [day]: {
+                text: reflection.text,
+                mood: reflection.mood,
+                timestamp: new Date().toISOString(),
+                ...(reflection.photoUri ? { photoUri: reflection.photoUri } : {}),
+              },
+            }
           : prev.reflections;
+
+        // Compute XP earned for this day (baseXP * difficulty multiplier)
+        const challenges = prev.selectedPath ? getChallengesForPath(prev.selectedPath) : [];
+        const challenge = challenges.find((c) => c.day === day);
+        const multiplier = prev.difficultyPreference
+          ? DIFFICULTY_MULTIPLIER[prev.difficultyPreference]
+          : 1.0;
+        const earnedXP = Math.round((challenge?.baseXP ?? 10) * multiplier);
+
+        const prevXP = prev.totalXP ?? 0;
+        const newXP = prevXP + earnedXP;
+        const prevLevel = getCurrentLevel(prevXP);
+        const newLevel = getCurrentLevel(newXP);
+        if (newLevel.level > prevLevel.level && prevLevel.level >= 1) {
+          setShowLevelUp(true);
+        }
+
         const updated: UserProgress = {
           ...prev,
           completedDays: newCompletedDays,
@@ -173,12 +212,17 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
           lastCompletedDate: today,
           lastMainChallengeDate: today,
           reflections: newReflections,
+          totalXP: newXP,
         };
         return { ...updated, unlockedAchievements: checkAchievements(updated) };
       });
     },
     [checkAchievements],
   );
+
+  const dismissLevelUp = useCallback((): void => {
+    setShowLevelUp(false);
+  }, []);
 
   const useStreakFreeze = useCallback((): void => {
     setProgress((prev) => {
@@ -197,7 +241,16 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     const key = `${challengeId}_${todayStr()}`;
     setProgress((prev) => {
       if (prev.completedBonusChallenges.includes(key)) return prev;
-      return { ...prev, completedBonusChallenges: [...prev.completedBonusChallenges, key] };
+      const bonusXP = 5;
+      const multiplier = prev.difficultyPreference
+        ? DIFFICULTY_MULTIPLIER[prev.difficultyPreference]
+        : 1.0;
+      const earnedBonus = Math.round(bonusXP * multiplier);
+      return {
+        ...prev,
+        completedBonusChallenges: [...prev.completedBonusChallenges, key],
+        totalXP: (prev.totalXP ?? 0) + earnedBonus,
+      };
     });
   }, []);
 
@@ -212,27 +265,33 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     await AsyncStorage.multiRemove([STORAGE_KEY, FLAGS_KEY]).catch(() => {});
   }, []);
 
-  const switchPath = useCallback((newPath: PathType): void => {
-    setProgress((prev) => {
-      // Compute current XP to carry over
-      const oldChallenges = prev.selectedPath ? getChallengesForPath(prev.selectedPath) : [];
-      const mainXP = prev.completedDays.reduce((acc, day) => {
-        const challenge = oldChallenges.find((c) => c.day === day);
-        return acc + (challenge?.xpReward ?? 10);
-      }, 0);
-      const bonusXP = prev.completedBonusChallenges.length * 5;
-      const carryoverXP = (prev.legacyXP ?? 0) + mainXP + bonusXP;
+  const switchPath = useCallback(
+    (newPath: PathType): void => {
+      setProgress((prev) => {
+        // Compute current XP to carry over
+        const oldChallenges = prev.selectedPath ? getChallengesForPath(prev.selectedPath) : [];
+        const multiplier = prev.difficultyPreference
+          ? DIFFICULTY_MULTIPLIER[prev.difficultyPreference]
+          : 1.0;
+        const mainXP = prev.completedDays.reduce((acc, day) => {
+          const challenge = oldChallenges.find((c) => c.day === day);
+          return acc + Math.round((challenge?.baseXP ?? 10) * multiplier);
+        }, 0);
+        const bonusXP = prev.completedBonusChallenges.length * 5;
+        const carryoverXP = (prev.totalXP ?? 0) + mainXP + bonusXP;
 
-      return {
-        ...prev,
-        selectedPath: newPath,
-        currentDay: 1,
-        completedDays: [],
-        startDate: new Date().toISOString(),
-        legacyXP: carryoverXP,
-      };
-    });
-  }, []);
+        return {
+          ...prev,
+          selectedPath: newPath,
+          currentDay: 1,
+          completedDays: [],
+          startDate: new Date().toISOString(),
+          totalXP: carryoverXP,
+        };
+      });
+    },
+    [],
+  );
 
   const importProgress = useCallback((next: UserProgress): void => {
     setProgress({ ...DEFAULT_PROGRESS, ...next });
@@ -260,13 +319,16 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
 
   const getTotalXP = useCallback((): number => {
     const challenges = progress.selectedPath ? getChallengesForPath(progress.selectedPath) : [];
+    const multiplier = progress.difficultyPreference
+      ? DIFFICULTY_MULTIPLIER[progress.difficultyPreference]
+      : 1.0;
     const mainXP = progress.completedDays.reduce((acc, day) => {
       const challenge = challenges.find((c) => c.day === day);
-      return acc + (challenge?.xpReward ?? 10);
+      return acc + Math.round((challenge?.baseXP ?? 10) * multiplier);
     }, 0);
     const bonusXP = progress.completedBonusChallenges.length * 5;
-    return mainXP + bonusXP + (progress.legacyXP ?? 0);
-  }, [progress.selectedPath, progress.completedDays, progress.completedBonusChallenges.length, progress.legacyXP]);
+    return mainXP + bonusXP + (progress.totalXP ?? 0);
+  }, [progress.selectedPath, progress.completedDays, progress.completedBonusChallenges.length, progress.totalXP, progress.difficultyPreference]);
 
   const shouldShowCheckIn = useCallback((): boolean => {
     if (!progress.selectedPath || !progress.lastCompletedDate) return false;
@@ -296,9 +358,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       const nextIncompleteDay =
         Array.from({ length: 60 }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? 60;
       // Recalculate streak: yesterday was completed, today is now the continuation point
-      const newStreak = prev.lastCompletedDate === yStr
-        ? prev.streak + 1
-        : 1;
+      const newStreak = prev.lastCompletedDate === yStr ? prev.streak + 1 : 1;
       const updated: UserProgress = {
         ...prev,
         completedDays: newCompletedDays,
@@ -319,10 +379,13 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     setProgress((prev) => ({ ...prev, checkInDismissedDate: today, lastVisitDate: today }));
   }, []);
 
+
+
   return useMemo(
     () => ({
       progress,
       isLoaded,
+      showLevelUp,
       selectPath,
       completeDay,
       resetProgress,
@@ -339,10 +402,13 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       dismissCheckIn,
       updateReflection,
       deleteReflection,
+      computeXPReward,
+      dismissLevelUp,
     }),
     [
       progress,
       isLoaded,
+      showLevelUp,
       selectPath,
       completeDay,
       resetProgress,
@@ -359,6 +425,8 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       dismissCheckIn,
       updateReflection,
       deleteReflection,
+      computeXPReward,
+      dismissLevelUp,
     ],
   );
 });

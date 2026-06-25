@@ -16,7 +16,7 @@ export interface Challenge {
   title: string;
   description: string;
   difficulty: "easy" | "medium" | "hard";
-  xpReward: number;
+  baseXP: number;
   category: string;
   path: PathType;
   proTip: string;
@@ -26,6 +26,7 @@ export interface Reflection {
   text: string;
   mood: Mood;
   timestamp: string;
+  photoUri?: string;
 }
 
 export interface UserProgress {
@@ -48,10 +49,17 @@ export interface UserProgress {
   difficultyPreference: DifficultyPreference | null;
   socialFear: SocialFear[];
   socialGoal: SocialGoal[];
-  legacyXP: number;
+  totalXP: number;
 }
 
 export type NodeStatus = "completed" | "current" | "locked" | "pro-locked";
+
+/** Multiplier applied to baseXP based on the user's difficulty preference. */
+export const DIFFICULTY_MULTIPLIER: Record<DifficultyPreference, number> = {
+  gentle: 1.0,
+  steady: 1.0,
+  push: 1.2,
+};
 
 export const MILESTONES = [10, 20, 30, 40, 50, 60] as const;
 export const TOTAL_DAYS = 60;
@@ -77,5 +85,5 @@ export const DEFAULT_PROGRESS: UserProgress = {
   difficultyPreference: null,
   socialFear: [],
   socialGoal: [],
-  legacyXP: 0,
+  totalXP: 0,
 };

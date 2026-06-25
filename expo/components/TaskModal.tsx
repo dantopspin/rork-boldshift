@@ -22,7 +22,8 @@ import PressableScale from "@/components/PressableScale";
 import { ACCENT, FONT, PATH_THEME, RADIUS } from "@/constants/theme";
 import { triggerHaptic } from "@/lib/haptics";
 import { useTheme } from "@/providers/ThemeProvider";
-import { Challenge, Mood, PathType } from "@/types";
+import { useProgress } from "@/providers/ProgressProvider";
+import { Challenge, DIFFICULTY_MULTIPLIER, Mood, PathType } from "@/types";
 
 interface Props {
   challenge: Challenge | null;
@@ -57,6 +58,7 @@ const DIFFICULTY_LABEL: Record<string, string> = { easy: "Easy", medium: "Medium
  */
 export default function TaskModal({ challenge, visible, isCompleted, canComplete, pathType, onClose, onComplete }: Props) {
   const { colors } = useTheme();
+  const { progress } = useProgress();
   const theme = PATH_THEME[pathType];
   const [text, setText] = useState<string>("");
   const [mood, setMood] = useState<Mood>("good");
@@ -309,7 +311,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                       <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 11 }}>{DIFFICULTY_LABEL[challenge.difficulty]}</Text>
                     </View>
                     <View style={{ backgroundColor: ACCENT.milestone + "22", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-                      <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{challenge.xpReward} XP</Text>
+                      <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{Math.round(challenge.baseXP * (progress.difficultyPreference ? DIFFICULTY_MULTIPLIER[progress.difficultyPreference] : 1.0))} XP</Text>
                     </View>
                   </View>
 

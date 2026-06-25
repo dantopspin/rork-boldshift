@@ -32,7 +32,7 @@ import { triggerHaptic } from "@/lib/haptics";
 import { useProgress } from "@/providers/ProgressProvider";
 import { useSubscription } from "@/providers/SubscriptionProvider";
 import { useTheme } from "@/providers/ThemeProvider";
-import { Challenge, FREE_DAYS, MILESTONES, Mood, NodeStatus } from "@/types";
+import { Challenge, DIFFICULTY_MULTIPLIER, FREE_DAYS, MILESTONES, Mood, NodeStatus } from "@/types";
 
 const GREETINGS = ["Let's grow today", "Keep the momentum", "One step further", "You've got this"];
 const getDailyGreeting = () => GREETINGS[new Date().getDay() % GREETINGS.length];
@@ -56,6 +56,10 @@ export default function Dashboard() {
     confirmYesterdayComplete,
     dismissCheckIn,
   } = useProgress();
+
+  const difficultyMultiplier = progress.difficultyPreference
+    ? DIFFICULTY_MULTIPLIER[progress.difficultyPreference]
+    : 1.0;
   const { isPro, maxDays } = useSubscription();
 
   const [selected, setSelected] = useState<Challenge | null>(null);
@@ -315,7 +319,7 @@ export default function Dashboard() {
                       <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }} numberOfLines={1}>
                         {currentChallenge.title}
                       </Text>
-                      <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{currentChallenge.xpReward} XP</Text>
+                      <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{Math.round(currentChallenge.baseXP * difficultyMultiplier)} XP</Text>
                     </View>
                     <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
                       {currentChallenge.description}
