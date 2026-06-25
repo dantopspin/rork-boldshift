@@ -41,8 +41,8 @@ export default function PressableScale({
     Animated.spring(scale, {
       toValue: scaleTo,
       useNativeDriver: true,
-      speed: 50,
-      bounciness: 0,
+      speed: 30,
+      bounciness: 8,
     }).start();
   };
 
@@ -50,8 +50,8 @@ export default function PressableScale({
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      speed: 50,
-      bounciness: 0,
+      speed: 30,
+      bounciness: 12,
     }).start();
   };
 

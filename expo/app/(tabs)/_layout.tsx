@@ -9,7 +9,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 const TabBarBg = memo(function TabBarBg({ isDark, colors }: { isDark: boolean; colors: { glassBg: string; glassBorder: string } }) {
   return (
     <View style={StyleSheet.absoluteFill}>
-      <BlurView intensity={40} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+      <BlurView intensity={28} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassBg, borderTopWidth: 1, borderTopColor: colors.glassBorder }]} />
     </View>
   );

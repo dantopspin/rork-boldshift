@@ -1,3 +1,5 @@
+import { PathType } from "@/types";
+
 export interface BonusChallenge {
   id: string;
   title: string;
@@ -69,10 +71,35 @@ export const BONUS_CHALLENGES: BonusChallenge[] = [
   { id: "bc_60", title: "Set weekly goals", description: "Set three social goals for the coming week", xp: 5, category: "reflection" },
 ];
 
-export const getDailyBonusChallenge = (): BonusChallenge => {
+/** Path-specific flavour suffixes for bonus challenge descriptions. Keeps the challenges feeling personalised. */
+const PATH_FLAVOURS: Record<PathType, Record<string, string>> = {
+  introvert: {
+    social: " — no pressure, just a small step",
+    mindset: " — in your own quiet way",
+    action: " — gentle, at your pace",
+    reflection: " — for your inner world",
+  },
+  speaking: {
+    social: " — and let your voice be heard",
+    mindset: " — speak it into existence",
+    action: " — project your presence",
+    reflection: " — listen to your own voice",
+  },
+  assertiveness: {
+    social: " — stand firm, stay kind",
+    mindset: " — own your power",
+    action: " — unapologetically you",
+    reflection: " — honour your boundaries",
+  },
+};
+
+export const getDailyBonusChallenge = (path?: PathType): BonusChallenge => {
   const today = new Date();
   const dayOfYear = Math.floor(
     (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24),
   );
-  return BONUS_CHALLENGES[dayOfYear % BONUS_CHALLENGES.length];
+  const base = BONUS_CHALLENGES[dayOfYear % BONUS_CHALLENGES.length];
+  if (!path) return base;
+  const flavour = PATH_FLAVOURS[path]?.[base.category];
+  return flavour ? { ...base, description: base.description + flavour } : base;
 };

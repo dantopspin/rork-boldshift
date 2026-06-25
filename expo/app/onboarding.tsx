@@ -26,7 +26,7 @@ import AppButton from "@/components/AppButton";
 import PressableScale from "@/components/PressableScale";
 import { ACCENT, FONT, PATH_THEME } from "@/constants/theme";
 import { getChallengesForPath } from "@/data/challenges";
-import { WEEK_THEMES } from "@/data/weekThemes";
+import { getWeekThemesForPath } from "@/data/weekThemes";
 import { triggerHaptic } from "@/lib/haptics";
 import { useProgress } from "@/providers/ProgressProvider";
 import { useSubscription } from "@/providers/SubscriptionProvider";
@@ -310,7 +310,7 @@ export default function Onboarding() {
                   60 days of progressive growth
                 </Text>
                 <View style={{ gap: 8 }}>
-                  {WEEK_THEMES.slice(0, 5).map((w) => (
+                  {getWeekThemesForPath(selectedPath).slice(0, 5).map((w) => (
                     <View key={w.week} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.cardSolid, borderWidth: 1, borderColor: colors.border }}>
                       <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: PATH_THEME[selectedPath].color + "22", alignItems: "center", justifyContent: "center" }}>
                         <Text style={{ color: PATH_THEME[selectedPath].color, fontFamily: FONT.bold, fontSize: 12 }}>{w.week}</Text>

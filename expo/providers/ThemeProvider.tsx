@@ -1,13 +1,15 @@
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
+import { useColorScheme } from "react-native";
 import { DARK, LIGHT, Palette } from "@/constants/theme";
 
 const STORAGE_KEY = "boldshift_theme";
 type Mode = "dark" | "light";
 
 export const [ThemeProvider, useTheme] = createContextHook(() => {
-  const [mode, setMode] = useState<Mode>("light");
+  const systemScheme = useColorScheme();
+  const [mode, setMode] = useState<Mode>(systemScheme === "dark" ? "dark" : "light");
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   useEffect(() => {

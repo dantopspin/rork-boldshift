@@ -27,7 +27,7 @@ import { ACCENT, FONT, GOLD_GRADIENT, PATH_THEME } from "@/constants/theme";
 import { getChallengesForPath } from "@/data/challenges";
 import { getDailyBonusChallenge } from "@/data/bonusChallenges";
 import { getDailyQuote } from "@/data/quotes";
-import { getWeekForDay, WEEK_THEMES } from "@/data/weekThemes";
+import { getWeekForDay, getWeekThemesForPath } from "@/data/weekThemes";
 import { triggerHaptic } from "@/lib/haptics";
 import { useProgress } from "@/providers/ProgressProvider";
 import { useSubscription } from "@/providers/SubscriptionProvider";
@@ -76,7 +76,7 @@ export default function Dashboard() {
   const currentCompleted = currentChallenge ? progress.completedDays.includes(currentChallenge.day) : false;
   const totalXP = getTotalXP();
   const dailyQuote = useMemo(() => getDailyQuote(path), [path]);
-  const dailyBonus = useMemo(() => getDailyBonusChallenge(), []);
+  const dailyBonus = useMemo(() => getDailyBonusChallenge(path ?? undefined), [path]);
   const bonusDone = isBonusChallengeCompleted(dailyBonus.id);
 
   const nextMilestone = MILESTONES.find((m) => m > progress.completedDays.length) ?? 60;
@@ -104,7 +104,7 @@ export default function Dashboard() {
 
   const challengesByWeek = useMemo(
     () =>
-      WEEK_THEMES.map((w) => {
+      getWeekThemesForPath(path ?? "introvert").map((w) => {
         const wChallenges = challenges.filter((c) => c.day >= w.startDay && c.day <= w.endDay);
         const completedCount = wChallenges.filter((c) => progress.completedDays.includes(c.day)).length;
         const isCompleted = wChallenges.length > 0 && completedCount === wChallenges.length;
@@ -326,74 +326,38 @@ export default function Dashboard() {
           {/* ── Today's challenge card ── */}
           {currentChallenge && (
             <GlassCard style={{ padding: 16 }} borderColor={currentCompleted ? ACCENT.success + "4D" : theme.color + "3D"}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <LinearGradient colors={currentCompleted ? [ACCENT.success, ACCENT.success] : theme.gradient} style={{ width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" }}>
-                  {currentCompleted ? (
-                    <CheckCircle size={20} color="#FFF" />
-                  ) : (
-                    <Text style={{ color: "#FFF", fontFamily: FONT.extrabold, fontSize: 16 }}>{currentChallenge.day}</Text>
-                  )}
-                </LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }} numberOfLines={1}>
-                      {currentChallenge.title}
+              <PressableScale
+                onPress={() => {
+                  if (currentCompleted || !canCompleteMainChallenge()) return;
+                  setSelected(currentChallenge);
+                }}
+                disabled={currentCompleted || !canCompleteMainChallenge()}
+                haptic={currentCompleted || !canCompleteMainChallenge() ? false : "light"}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <LinearGradient colors={currentCompleted ? [ACCENT.success, ACCENT.success] : theme.gradient} style={{ width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" }}>
+                    {currentCompleted ? (
+                      <CheckCircle size={20} color="#FFF" />
+                    ) : (
+                      <Text style={{ color: "#FFF", fontFamily: FONT.extrabold, fontSize: 16 }}>{currentChallenge.day}</Text>
+                    )}
+                  </LinearGradient>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }} numberOfLines={1}>
+                        {currentChallenge.title}
+                      </Text>
+                      <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{currentChallenge.xpReward} XP</Text>
+                    </View>
+                    <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                      {currentChallenge.description}
                     </Text>
-                    <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{currentChallenge.xpReward} XP</Text>
                   </View>
-                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-                    {currentChallenge.description}
-                  </Text>
+                  {!currentCompleted && canCompleteMainChallenge() && (
+                    <Play size={16} color={theme.color} />
+                  )}
                 </View>
-                <PressableScale
-                  onPress={() => {
-                    if (currentCompleted || !canCompleteMainChallenge()) return;
-                    triggerHaptic("success");
-                    completeDay(currentChallenge.day);
-                    if (CELEBRATION_DAYS.has(currentChallenge.day)) {
-                      setTimeout(() => setShowConfetti(true), 100);
-                    }
-                  }}
-                  disabled={currentCompleted || !canCompleteMainChallenge()}
-                  haptic={currentCompleted || !canCompleteMainChallenge() ? false : "success"}
-                  innerStyle={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 19,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: currentCompleted ? ACCENT.success : "transparent",
-                    borderWidth: currentCompleted ? 0 : 2,
-                    borderColor: theme.color,
-                  }}
-                >
-                  <CheckCircle size={20} color={currentCompleted ? "#FFF" : theme.color} strokeWidth={3} />
-                </PressableScale>
-              </View>
-              {/* Tap card body to open full reflection form */}
-              {!currentCompleted && canCompleteMainChallenge() && (
-                <PressableScale
-                  onPress={() => setSelected(currentChallenge)}
-                  haptic="light"
-                  innerStyle={{
-                    marginTop: 12,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    backgroundColor: theme.color + "0D",
-                    borderWidth: 1,
-                    borderColor: theme.color + "22",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Play size={13} color={theme.color} />
-                  <Text style={{ color: theme.color, fontFamily: FONT.medium, fontSize: 13 }}>
-                    Add reflection & mood
-                  </Text>
-                </PressableScale>
-              )}
+              </PressableScale>
             </GlassCard>
           )}
 
