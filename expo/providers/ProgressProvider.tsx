@@ -35,6 +35,13 @@ const yesterdayStr = (): string => {
   return d.toISOString().split("T")[0];
 };
 
+/** Returns the absolute difference in calendar days between two ISO date strings. */
+function daysBetween(a: string, b: string): number {
+  const da = new Date(a + "T00:00:00Z").getTime();
+  const db = new Date(b + "T00:00:00Z").getTime();
+  return Math.round(Math.abs(da - db) / 86400000);
+}
+
 export const [ProgressProvider, useProgress] = createContextHook(() => {
   const [progress, setProgress] = useState<UserProgress>(DEFAULT_PROGRESS);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
@@ -56,22 +63,45 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
             return;
           }
           const parsed = JSON.parse(storedRaw) as Partial<UserProgress>;
+
           // Prune bonus challenge entries older than 7 days to keep the array bounded
           const cutoff = new Date();
           cutoff.setDate(cutoff.getDate() - 7);
           const cutoffStr = cutoff.toISOString().split("T")[0];
-          const prunedBonuses = (parsed.completedBonusChallenges ?? []).filter((key) => {
+          const originalBonuses = parsed.completedBonusChallenges ?? [];
+          const prunedBonuses = originalBonuses.filter((key) => {
             const datePart = key.split("_").pop();
             return datePart !== undefined && datePart >= cutoffStr;
           });
+          const prunedCount = originalBonuses.length - prunedBonuses.length;
+          // Carry over XP from pruned bonus challenges so total XP never drops
+          const prunedXP = prunedCount * 5;
+
+          // Auto-freeze: silently protect the streak if the user missed yesterday
+          const today = todayStr();
+          const yStr = yesterdayStr();
+          let streakFreezes = parsed.streakFreezes ?? 2;
+          let lastCompDate = parsed.lastCompletedDate ?? null;
+          if (
+            (parsed.streak ?? 0) > 0 &&
+            streakFreezes > 0 &&
+            lastCompDate &&
+            lastCompDate < yStr &&
+            lastCompDate !== today
+          ) {
+            streakFreezes -= 1;
+            lastCompDate = yStr;
+          }
+
           setProgress({
             ...DEFAULT_PROGRESS,
             ...parsed,
-            streakFreezes: parsed.streakFreezes ?? 2,
+            streakFreezes,
+            lastCompletedDate: lastCompDate,
             unlockedAchievements: parsed.unlockedAchievements ?? [],
             completedBonusChallenges: prunedBonuses,
             reflections: parsed.reflections ?? {},
-            totalXP: parsed.totalXP ?? 0,
+            totalXP: (parsed.totalXP ?? 0) + prunedXP,
           });
         }
       } catch (e) {
@@ -159,11 +189,11 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       const today = todayStr();
       setProgress((prev) => {
         if (prev.completedDays.includes(day)) return prev;
-        const yStr = yesterdayStr();
+        const lastDate = prev.lastCompletedDate;
         let newStreak: number;
-        if (prev.lastCompletedDate === yStr) {
+        if (lastDate && daysBetween(today, lastDate) === 1) {
           newStreak = prev.streak + 1;
-        } else if (prev.lastCompletedDate === today) {
+        } else if (lastDate && daysBetween(today, lastDate) === 0) {
           newStreak = prev.streak; // same day — keep streak, don't increment
         } else {
           newStreak = 1;
@@ -357,8 +387,16 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
         : [...prev.completedDates, yStr];
       const nextIncompleteDay =
         Array.from({ length: 60 }, (_, i) => i + 1).find((d) => !newCompletedDays.includes(d)) ?? 60;
-      // Recalculate streak: yesterday was completed, today is now the continuation point
-      const newStreak = prev.lastCompletedDate === yStr ? prev.streak + 1 : 1;
+      // Recalculate streak using robust day-difference check
+      const lastDate = prev.lastCompletedDate;
+      let newStreak: number;
+      if (lastDate && daysBetween(today, lastDate) === 1) {
+        newStreak = prev.streak + 1;
+      } else if (lastDate && daysBetween(today, lastDate) === 0) {
+        newStreak = prev.streak;
+      } else {
+        newStreak = 1;
+      }
       const updated: UserProgress = {
         ...prev,
         completedDays: newCompletedDays,
