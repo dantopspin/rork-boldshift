@@ -304,18 +304,20 @@ export default function Journal() {
                 }}
               />
               <View style={{ flexDirection: "row", gap: 10 }}>
-                <PressableScale
+                <AppButton
+                  label="Cancel"
+                  variant="outline"
+                  size="md"
+                  fullWidth
                   onPress={() => { setEditDay(null); setEditText(""); }}
-                  innerStyle={{ flex: 1, alignItems: "center", paddingVertical: 14, borderRadius: 14, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border }}
-                >
-                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.bold, fontSize: 15 }}>Cancel</Text>
-                </PressableScale>
-                <PressableScale
+                />
+                <AppButton
+                  label="Save"
+                  variant="primary"
+                  size="md"
+                  fullWidth
                   onPress={handleSaveEdit}
-                  innerStyle={{ flex: 1, alignItems: "center", paddingVertical: 14, borderRadius: 14, backgroundColor: colors.primary }}
-                >
-                  <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 15 }}>Save</Text>
-                </PressableScale>
+                />
               </View>
             </View>
           </KeyboardAvoidingView>
