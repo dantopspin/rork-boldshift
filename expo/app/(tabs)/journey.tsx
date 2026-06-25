@@ -275,6 +275,60 @@ export default function Dashboard() {
             </GlassCard>
           )}
 
+          {/* ── Today's challenge card ── */}
+          {progress.completedDays.length >= 60 ? (
+            <GlassCard style={{ padding: 16 }} borderColor={ACCENT.milestone + "4D"}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <LinearGradient colors={GOLD_GRADIENT} style={{ width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" }}>
+                  <Trophy size={20} color="#FFF" />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>
+                    Transformation Complete!
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>
+                    You've conquered all 60 days. Legendary.
+                  </Text>
+                </View>
+              </View>
+            </GlassCard>
+          ) : currentChallenge ? (
+            <GlassCard style={{ padding: 16 }} borderColor={currentCompleted ? ACCENT.success + "4D" : theme.color + "3D"}>
+              <PressableScale
+                onPress={() => {
+                  if (currentCompleted || !canCompleteMainChallenge()) return;
+                  setSelected(currentChallenge);
+                }}
+                disabled={currentCompleted || !canCompleteMainChallenge()}
+                haptic={currentCompleted || !canCompleteMainChallenge() ? false : "light"}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <LinearGradient colors={currentCompleted ? [ACCENT.success, ACCENT.success] : theme.gradient} style={{ width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" }}>
+                    {currentCompleted ? (
+                      <CheckCircle size={20} color="#FFF" />
+                    ) : (
+                      <Text style={{ color: "#FFF", fontFamily: FONT.extrabold, fontSize: 16 }}>{currentChallenge.day}</Text>
+                    )}
+                  </LinearGradient>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }} numberOfLines={1}>
+                        {currentChallenge.title}
+                      </Text>
+                      <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{currentChallenge.xpReward} XP</Text>
+                    </View>
+                    <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                      {currentChallenge.description}
+                    </Text>
+                  </View>
+                  {!currentCompleted && canCompleteMainChallenge() && (
+                    <Play size={16} color={theme.color} />
+                  )}
+                </View>
+              </PressableScale>
+            </GlassCard>
+          ) : null}
+
           {/* ── Daily quote ── */}
           <GlassCard style={{ padding: 0, overflow: "hidden" }}>
             <View style={{ flexDirection: "row" }}>
@@ -322,44 +376,6 @@ export default function Dashboard() {
             </View>
             <AnimatedProgressBar progress={progressPercent} color={theme.color} trackColor={colors.secondary} height={7} />
           </GlassCard>
-
-          {/* ── Today's challenge card ── */}
-          {currentChallenge && (
-            <GlassCard style={{ padding: 16 }} borderColor={currentCompleted ? ACCENT.success + "4D" : theme.color + "3D"}>
-              <PressableScale
-                onPress={() => {
-                  if (currentCompleted || !canCompleteMainChallenge()) return;
-                  setSelected(currentChallenge);
-                }}
-                disabled={currentCompleted || !canCompleteMainChallenge()}
-                haptic={currentCompleted || !canCompleteMainChallenge() ? false : "light"}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                  <LinearGradient colors={currentCompleted ? [ACCENT.success, ACCENT.success] : theme.gradient} style={{ width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" }}>
-                    {currentCompleted ? (
-                      <CheckCircle size={20} color="#FFF" />
-                    ) : (
-                      <Text style={{ color: "#FFF", fontFamily: FONT.extrabold, fontSize: 16 }}>{currentChallenge.day}</Text>
-                    )}
-                  </LinearGradient>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }} numberOfLines={1}>
-                        {currentChallenge.title}
-                      </Text>
-                      <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{currentChallenge.xpReward} XP</Text>
-                    </View>
-                    <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-                      {currentChallenge.description}
-                    </Text>
-                  </View>
-                  {!currentCompleted && canCompleteMainChallenge() && (
-                    <Play size={16} color={theme.color} />
-                  )}
-                </View>
-              </PressableScale>
-            </GlassCard>
-          )}
 
           {/* ── Bonus challenge ── */}
           <BonusChallengeCard

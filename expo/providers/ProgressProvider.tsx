@@ -120,16 +120,16 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     (
       path: PathType,
       preference?: DifficultyPreference | null,
-      fear?: SocialFear | null,
-      goal?: SocialGoal | null,
+      fears?: SocialFear[],
+      goals?: SocialGoal[],
     ): void => {
       setProgress((prev) => ({
         ...prev,
         selectedPath: path,
         startDate: new Date().toISOString(),
         difficultyPreference: preference ?? null,
-        socialFear: fear ?? null,
-        socialGoal: goal ?? null,
+        socialFear: fears ?? [],
+        socialGoal: goals ?? [],
       }));
     },
     [],

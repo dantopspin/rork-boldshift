@@ -45,8 +45,8 @@ export interface UserProgress {
   lastVisitDate: string | null;
   checkInDismissedDate: string | null;
   difficultyPreference: DifficultyPreference | null;
-  socialFear: SocialFear | null;
-  socialGoal: SocialGoal | null;
+  socialFear: SocialFear[];
+  socialGoal: SocialGoal[];
   legacyXP: number;
 }
 
@@ -74,7 +74,7 @@ export const DEFAULT_PROGRESS: UserProgress = {
   lastVisitDate: null,
   checkInDismissedDate: null,
   difficultyPreference: null,
-  socialFear: null,
-  socialGoal: null,
+  socialFear: [],
+  socialGoal: [],
   legacyXP: 0,
 };

@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
@@ -141,7 +142,9 @@ export default function Onboarding() {
     if (reminderEnabled) {
       scheduleReminder();
     }
-    selectPath(selectedPath, null, fears[0] ?? null, goals[0] ?? null);
+    // Persist notification preference so Profile stays in sync
+    AsyncStorage.setItem("boldshift_notifications", JSON.stringify(reminderEnabled)).catch(() => {});
+    selectPath(selectedPath, null, fears, goals);
     if (!isPro) setShowPaywallAfterOnboarding(true);
     router.replace("/(tabs)/journey");
   };
