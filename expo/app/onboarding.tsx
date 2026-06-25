@@ -11,7 +11,7 @@ import {
   Rocket,
   Shield,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -100,11 +100,46 @@ export default function Onboarding() {
     setGoals((prev) => (prev.includes(v) ? prev.filter((g) => g !== v) : [...prev, v]));
   };
 
+  const DAILY_REMINDER_ID = "boldshift-daily-reminder";
+
+  const scheduleReminder = useCallback(async (): Promise<void> => {
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== "granted") return;
+    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID).catch(() => {});
+    await Notifications.scheduleNotificationAsync({
+      identifier: DAILY_REMINDER_ID,
+      content: {
+        title: "Time for your daily challenge",
+        body: "One small step today keeps your BoldShift streak alive.",
+        sound: "default",
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: 9,
+        minute: 0,
+      },
+    });
+  }, []);
+
+  const cancelReminder = useCallback(async (): Promise<void> => {
+    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID).catch(() => {});
+  }, []);
+
+  const handleReminderToggle = useCallback(async (): Promise<void> => {
+    const next = !reminderEnabled;
+    setReminderEnabled(next);
+    if (next) {
+      await scheduleReminder();
+    } else {
+      await cancelReminder();
+    }
+  }, [reminderEnabled, scheduleReminder, cancelReminder]);
+
   const handleStart = (): void => {
     triggerHaptic("success");
     if (!selectedPath) return;
     if (reminderEnabled) {
-      Notifications.requestPermissionsAsync().catch(() => {});
+      scheduleReminder();
     }
     selectPath(selectedPath, null, fears[0] ?? null, goals[0] ?? null);
     if (!isPro) setShowPaywallAfterOnboarding(true);
@@ -326,13 +361,7 @@ export default function Onboarding() {
                   </Text>
                 </View>
                 <PressableScale
-                  onPress={() => {
-                    const next = !reminderEnabled;
-                    setReminderEnabled(next);
-                    if (next) {
-                      Notifications.requestPermissionsAsync().catch(() => {});
-                    }
-                  }}
+                  onPress={handleReminderToggle}
                   innerStyle={{
                     padding: 16,
                     borderRadius: 14,

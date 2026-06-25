@@ -68,6 +68,7 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
             unlockedAchievements: parsed.unlockedAchievements ?? [],
             completedBonusChallenges: prunedBonuses,
             reflections: parsed.reflections ?? {},
+            legacyXP: parsed.legacyXP ?? 0,
           });
         }
       } catch (e) {
@@ -212,13 +213,25 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
   }, []);
 
   const switchPath = useCallback((newPath: PathType): void => {
-    setProgress((prev) => ({
-      ...DEFAULT_PROGRESS,
-      streakFreezes: prev.streakFreezes,
-      lastFreezeReset: prev.lastFreezeReset,
-      selectedPath: newPath,
-      startDate: new Date().toISOString(),
-    }));
+    setProgress((prev) => {
+      // Compute current XP to carry over
+      const oldChallenges = prev.selectedPath ? getChallengesForPath(prev.selectedPath) : [];
+      const mainXP = prev.completedDays.reduce((acc, day) => {
+        const challenge = oldChallenges.find((c) => c.day === day);
+        return acc + (challenge?.xpReward ?? 10);
+      }, 0);
+      const bonusXP = prev.completedBonusChallenges.length * 5;
+      const carryoverXP = (prev.legacyXP ?? 0) + mainXP + bonusXP;
+
+      return {
+        ...prev,
+        selectedPath: newPath,
+        currentDay: 1,
+        completedDays: [],
+        startDate: new Date().toISOString(),
+        legacyXP: carryoverXP,
+      };
+    });
   }, []);
 
   const importProgress = useCallback((next: UserProgress): void => {
@@ -252,8 +265,8 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
       return acc + (challenge?.xpReward ?? 10);
     }, 0);
     const bonusXP = progress.completedBonusChallenges.length * 5;
-    return mainXP + bonusXP;
-  }, [progress.selectedPath, progress.completedDays, progress.completedBonusChallenges.length]);
+    return mainXP + bonusXP + (progress.legacyXP ?? 0);
+  }, [progress.selectedPath, progress.completedDays, progress.completedBonusChallenges.length, progress.legacyXP]);
 
   const shouldShowCheckIn = useCallback((): boolean => {
     if (!progress.selectedPath || !progress.lastCompletedDate) return false;

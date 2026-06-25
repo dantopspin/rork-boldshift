@@ -1,7 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, Camera, Check, Frown, Heart, Meh, Smile, X } from "lucide-react-native";
+import { Camera, Check, Frown, Heart, ImageIcon, Meh, Smile, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -47,11 +47,10 @@ const ICON_SIZE = 22;
 const DIFFICULTY_LABEL: Record<string, string> = { easy: "Easy", medium: "Medium", hard: "Hard" };
 
 /**
- * Two-phase bottom-sheet modal for reading a challenge then logging a reflection.
+ * Single-phase bottom-sheet modal for completing a challenge.
  *
- * Phase 1 — Read: shows title + description + "I'll do this challenge →" CTA.
- * Phase 2 — Complete: shows mood selector + reflection input + "Complete Day X".
- * Skips Phase 1 entirely if the challenge is already completed.
+ * Shows the full challenge info plus mood, optional photo proof, and reflection
+ * on one screen — no intermediate read step.
  *
  * Dismiss behaviour: when the challenge is completed, the sheet slides down with a
  * brief "Completed" banner visible during the animation — no snap-away glitch.
@@ -61,8 +60,8 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
   const theme = PATH_THEME[pathType];
   const [text, setText] = useState<string>("");
   const [mood, setMood] = useState<Mood>("good");
-  const [readyToComplete, setReadyToComplete] = useState<boolean>(false);
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+  const [showPhotoOptions, setShowPhotoOptions] = useState<boolean>(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   const translateY = useRef(new Animated.Value(600)).current;
@@ -114,8 +113,8 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
     if (visible && challenge) {
       setText("");
       setMood("good");
-      setReadyToComplete(isCompleted);
       setPhotoUri(null);
+      setShowPhotoOptions(false);
       setKeyboardHeight(0);
       translateY.setValue(600);
       Animated.parallel([
@@ -188,7 +187,8 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
 
   /** Called when the user taps "Complete Day X". */
   /** Open the photo library for proof evidence. */
-  const pickPhoto = useCallback(async (): Promise<void> => {
+  const pickFromGallery = useCallback(async (): Promise<void> => {
+    setShowPhotoOptions(false);
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
 
@@ -204,6 +204,30 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
     }
   }, []);
 
+  /** Open the camera for proof evidence. */
+  const pickFromCamera = useCallback(async (): Promise<void> => {
+    setShowPhotoOptions(false);
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      triggerHaptic("light");
+      setPhotoUri(result.assets[0]!.uri);
+    }
+  }, []);
+
+  /** Remove the attached photo. */
+  const removePhoto = useCallback((): void => {
+    triggerHaptic("light");
+    setPhotoUri(null);
+  }, []);
+
   const handleComplete = useCallback((): void => {
     triggerHaptic("success");
     Keyboard.dismiss();
@@ -215,7 +239,6 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
   if (!challenge) return null;
 
   const blocked = !canComplete && !isCompleted;
-  const phaseOne = !readyToComplete && !isCompleted;
 
   const sheetTranslate = Animated.add(translateY, keyboardY);
 
@@ -262,23 +285,9 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                 >
                   {/* Header row */}
                   <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                      {!phaseOne && !isCompleted && (
-                        <PressableScale
-                          onPress={() => {
-                            triggerHaptic("light");
-                            setReadyToComplete(false);
-                          }}
-                          hitSlop={10}
-                          innerStyle={{ padding: 6, borderRadius: 20, backgroundColor: colors.secondary }}
-                        >
-                          <ArrowLeft size={18} color={colors.mutedForeground} />
-                        </PressableScale>
-                      )}
-                      <LinearGradient colors={theme.gradient} style={{ width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ color: "#FFF", fontFamily: FONT.extrabold, fontSize: 20 }}>{challenge.day}</Text>
-                      </LinearGradient>
-                    </View>
+                    <LinearGradient colors={theme.gradient} style={{ width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ color: "#FFF", fontFamily: FONT.extrabold, fontSize: 20 }}>{challenge.day}</Text>
+                    </LinearGradient>
                     <PressableScale onPress={dismiss} hitSlop={10} innerStyle={{ padding: 6, borderRadius: 20, backgroundColor: colors.secondary }}>
                       <X size={18} color={colors.mutedForeground} />
                     </PressableScale>
@@ -300,55 +309,34 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                   {/* Title */}
                   <Text style={{ color: colors.foreground, fontFamily: FONT.extrabold, fontSize: 20 }}>{challenge.title}</Text>
 
-                  {/* ---- PHASE 1: Read view ---- */}
-                  {phaseOne && (
-                    <>
-                      <Text
-                        numberOfLines={6}
-                        style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 14, lineHeight: 20 }}
-                      >
-                        {challenge.description}
-                      </Text>
-                      {blocked ? (
-                        <View style={{ padding: 14, borderRadius: 14, backgroundColor: colors.secondary }}>
-                          <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13, textAlign: "center" }}>One challenge per day</Text>
-                          <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 4 }}>
-                            You already completed today's challenge. Come back tomorrow!
-                          </Text>
-                        </View>
-                      ) : (
-                        <AppButton
-                          label="I'll do this challenge →"
-                          size="lg"
-                          fullWidth
-                          gradient={theme.gradient}
-                          onPress={() => {
-                            triggerHaptic("medium");
-                            setReadyToComplete(true);
-                          }}
-                        />
-                      )}
-                    </>
-                  )}
+                  {/* Description */}
+                  <Text
+                    numberOfLines={6}
+                    style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 14, lineHeight: 20 }}
+                  >
+                    {challenge.description}
+                  </Text>
 
                   {/* ---- Completed banner ---- */}
                   {isCompleted && (
-                    <>
-                      <Text
-                        numberOfLines={4}
-                        style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 14, lineHeight: 20 }}
-                      >
-                        {challenge.description}
-                      </Text>
-                      <View style={{ padding: 14, borderRadius: 14, backgroundColor: ACCENT.success + "1A", flexDirection: "row", alignItems: "center", gap: 10 }}>
-                        <Check size={20} color={ACCENT.success} strokeWidth={3} />
-                        <Text style={{ color: ACCENT.success, fontFamily: FONT.bold, fontSize: 14 }}>Completed — nice work!</Text>
-                      </View>
-                    </>
+                    <View style={{ padding: 14, borderRadius: 14, backgroundColor: ACCENT.success + "1A", flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <Check size={20} color={ACCENT.success} strokeWidth={3} />
+                      <Text style={{ color: ACCENT.success, fontFamily: FONT.bold, fontSize: 14 }}>Completed — nice work!</Text>
+                    </View>
                   )}
 
-                  {/* ---- PHASE 2: Complete form ---- */}
-                  {readyToComplete && !isCompleted && !blocked && (
+                  {/* ---- Blocked (already completed today) ---- */}
+                  {blocked && (
+                    <View style={{ padding: 14, borderRadius: 14, backgroundColor: colors.secondary }}>
+                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 13, textAlign: "center" }}>One challenge per day</Text>
+                      <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 4 }}>
+                        You already completed today's challenge. Come back tomorrow!
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* ---- Complete form (always shown unless completed or blocked) ---- */}
+                  {!isCompleted && !blocked && (
                     <>
                       {/* Mood selector */}
                       <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>How did it feel?</Text>
@@ -381,68 +369,114 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                         })}
                       </View>
 
-                      {/* Photo Evidence */}
-                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>Photo Evidence</Text>
-                      <PressableScale
-                        onPress={pickPhoto}
-                        haptic="light"
-                        innerStyle={{
-                          borderRadius: RADIUS.md,
-                          borderWidth: photoUri ? 2 : 1.5,
-                          borderColor: photoUri ? ACCENT.success : colors.border,
-                          borderStyle: photoUri ? "solid" : "dashed",
-                          backgroundColor: photoUri ? ACCENT.success + "0D" : colors.secondary,
-                          overflow: "hidden",
-                        }}
-                      >
-                        {photoUri ? (
-                          <View>
-                            <Image source={{ uri: photoUri }} style={{ width: "100%", height: 140 }} contentFit="cover" />
-                            <View
-                              style={{
-                                position: "absolute",
-                                top: 10,
-                                right: 10,
-                                width: 28,
-                                height: 28,
-                                borderRadius: 14,
-                                backgroundColor: ACCENT.success,
-                                alignItems: "center",
-                                justifyContent: "center",
+                      {/* Photo Evidence (optional) */}
+                      <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>Photo Evidence (optional)</Text>
+
+                      {photoUri ? (
+                        <View style={{ borderRadius: RADIUS.md, borderWidth: 2, borderColor: ACCENT.success, backgroundColor: ACCENT.success + "0D", overflow: "hidden" }}>
+                          <Image source={{ uri: photoUri }} style={{ width: "100%", height: 140 }} contentFit="cover" />
+                          <View
+                            style={{
+                              position: "absolute",
+                              top: 10,
+                              right: 10,
+                              width: 28,
+                              height: 28,
+                              borderRadius: 14,
+                              backgroundColor: ACCENT.success,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Check size={15} color="#FFF" strokeWidth={3} />
+                          </View>
+                          <View style={{ flexDirection: "row", gap: 0 }}>
+                            <PressableScale
+                              onPress={() => {
+                                triggerHaptic("light");
+                                setShowPhotoOptions(true);
                               }}
+                              style={{ flex: 1 }}
+                              innerStyle={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 8 }}
                             >
-                              <Check size={15} color="#FFF" strokeWidth={3} />
-                            </View>
-                            <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
                               <Camera size={14} color={ACCENT.success} />
-                              <Text style={{ color: ACCENT.success, fontFamily: FONT.medium, fontSize: 12 }}>Photo attached — tap to change</Text>
-                            </View>
-                          </View>
-                        ) : (
-                          <View style={{ paddingVertical: 32, alignItems: "center", gap: 8 }}>
-                            <View
-                              style={{
-                                width: 44,
-                                height: 44,
-                                borderRadius: 22,
-                                backgroundColor: colors.secondary,
-                                borderWidth: 1,
-                                borderColor: colors.border,
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
+                              <Text style={{ color: ACCENT.success, fontFamily: FONT.medium, fontSize: 12 }}>Change photo</Text>
+                            </PressableScale>
+                            <PressableScale
+                              onPress={removePhoto}
+                              style={{ flex: 1 }}
+                              innerStyle={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "flex-end" }}
                             >
-                              <Camera size={20} color={colors.mutedForeground} />
-                            </View>
-                            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>
-                              Tap to add proof
-                            </Text>
-                            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, opacity: 0.6 }}>
-                              Snap a photo to prove you did it
-                            </Text>
+                              <X size={14} color={colors.mutedForeground} />
+                              <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 12 }}>Remove</Text>
+                            </PressableScale>
                           </View>
-                        )}
-                      </PressableScale>
+                        </View>
+                      ) : showPhotoOptions ? (
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                          <PressableScale
+                            onPress={pickFromCamera}
+                            style={{ flex: 1 }}
+                            innerStyle={{
+                              borderRadius: RADIUS.md,
+                              borderWidth: 1.5,
+                              borderColor: colors.border,
+                              borderStyle: "dashed",
+                              backgroundColor: colors.secondary,
+                              paddingVertical: 24,
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.color + "22", alignItems: "center", justifyContent: "center" }}>
+                              <Camera size={20} color={theme.color} />
+                            </View>
+                            <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 13 }}>Camera</Text>
+                          </PressableScale>
+                          <PressableScale
+                            onPress={pickFromGallery}
+                            style={{ flex: 1 }}
+                            innerStyle={{
+                              borderRadius: RADIUS.md,
+                              borderWidth: 1.5,
+                              borderColor: colors.border,
+                              borderStyle: "dashed",
+                              backgroundColor: colors.secondary,
+                              paddingVertical: 24,
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+                              <ImageIcon size={20} color={colors.mutedForeground} />
+                            </View>
+                            <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 13 }}>Gallery</Text>
+                          </PressableScale>
+                        </View>
+                      ) : (
+                        <PressableScale
+                          onPress={() => {
+                            triggerHaptic("light");
+                            setShowPhotoOptions(true);
+                          }}
+                          innerStyle={{
+                            borderRadius: RADIUS.md,
+                            borderWidth: 1.5,
+                            borderColor: colors.border,
+                            borderStyle: "dashed",
+                            backgroundColor: colors.secondary,
+                            paddingVertical: 28,
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+                            <Camera size={18} color={colors.mutedForeground} />
+                          </View>
+                          <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>Add proof photo</Text>
+                          <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, opacity: 0.5 }}>Optional — camera or gallery</Text>
+                        </PressableScale>
+                      )}
 
                       {/* Reflection input */}
                       <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }}>Reflection</Text>
@@ -483,13 +517,7 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                         gradient={theme.gradient}
                         icon={<Check size={20} color="#FFF" strokeWidth={3} />}
                         onPress={handleComplete}
-                        disabled={!photoUri}
                       />
-                      {!photoUri && (
-                        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, textAlign: "center" }}>
-                          Add photo evidence to complete
-                        </Text>
-                      )}
                     </>
                   )}
                 </ScrollView>

@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
+import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Award,
   Bell,
@@ -17,7 +17,7 @@ import {
   Sun,
   TrendingUp,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import GlassCard from "@/components/GlassCard";
@@ -45,18 +45,52 @@ export default function Profile() {
   const [switching, setSwitching] = useState<boolean>(false);
   const [notificationsOn, setNotificationsOn] = useState<boolean>(true);
 
-  // Load notification preference
-  useEffect(() => {
-    AsyncStorage.getItem("boldshift_notifications").then((v) => {
-      if (v === "false") setNotificationsOn(false);
-    }).catch(() => {});
+  const DAILY_REMINDER_ID = "boldshift-daily-reminder";
+
+  const scheduleReminder = useCallback(async (): Promise<void> => {
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== "granted") return;
+
+    // Cancel any existing before re-scheduling to avoid duplicates
+    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID).catch(() => {});
+    await Notifications.scheduleNotificationAsync({
+      identifier: DAILY_REMINDER_ID,
+      content: {
+        title: "Time for your daily challenge",
+        body: "One small step today keeps your BoldShift streak alive.",
+        sound: "default",
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: 9,
+        minute: 0,
+      },
+    });
   }, []);
 
-  const toggleNotifications = (): void => {
+  const cancelReminder = useCallback(async (): Promise<void> => {
+    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID).catch(() => {});
+  }, []);
+
+  // Sync toggle with actual scheduled state on mount
+  useEffect(() => {
+    Notifications.getAllScheduledNotificationsAsync()
+      .then((scheduled) => {
+        const hasReminder = scheduled.some((n) => n.identifier === DAILY_REMINDER_ID);
+        setNotificationsOn(hasReminder);
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleNotifications = async (): Promise<void> => {
     const next = !notificationsOn;
     setNotificationsOn(next);
     triggerHaptic("light");
-    AsyncStorage.setItem("boldshift_notifications", String(next)).catch(() => {});
+    if (next) {
+      await scheduleReminder();
+    } else {
+      await cancelReminder();
+    }
   };
 
   const currentPath = progress.selectedPath ?? "introvert";

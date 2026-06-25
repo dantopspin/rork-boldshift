@@ -7,6 +7,7 @@ import {
   Crown,
   Flame,
   Lock,
+  Play,
   Quote as QuoteIcon,
   Sparkles,
   Trophy,
@@ -68,6 +69,11 @@ export default function Dashboard() {
   const theme = path ? PATH_THEME[path] : PATH_THEME.introvert;
 
   const challenges = useMemo(() => (path ? getChallengesForPath(path) : []), [path]);
+  const currentChallenge = useMemo(
+    () => challenges.find((c) => c.day === progress.currentDay) ?? null,
+    [challenges, progress.currentDay],
+  );
+  const currentCompleted = currentChallenge ? progress.completedDays.includes(currentChallenge.day) : false;
   const totalXP = getTotalXP();
   const dailyQuote = useMemo(() => getDailyQuote(path), [path]);
   const dailyBonus = useMemo(() => getDailyBonusChallenge(), []);
@@ -316,6 +322,80 @@ export default function Dashboard() {
             </View>
             <AnimatedProgressBar progress={progressPercent} color={theme.color} trackColor={colors.secondary} height={7} />
           </GlassCard>
+
+          {/* ── Today's challenge card ── */}
+          {currentChallenge && (
+            <GlassCard style={{ padding: 16 }} borderColor={currentCompleted ? ACCENT.success + "4D" : theme.color + "3D"}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <LinearGradient colors={currentCompleted ? [ACCENT.success, ACCENT.success] : theme.gradient} style={{ width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" }}>
+                  {currentCompleted ? (
+                    <CheckCircle size={20} color="#FFF" />
+                  ) : (
+                    <Text style={{ color: "#FFF", fontFamily: FONT.extrabold, fontSize: 16 }}>{currentChallenge.day}</Text>
+                  )}
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 14 }} numberOfLines={1}>
+                      {currentChallenge.title}
+                    </Text>
+                    <Text style={{ color: ACCENT.milestone, fontFamily: FONT.bold, fontSize: 11 }}>+{currentChallenge.xpReward} XP</Text>
+                  </View>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                    {currentChallenge.description}
+                  </Text>
+                </View>
+                <PressableScale
+                  onPress={() => {
+                    if (currentCompleted || !canCompleteMainChallenge()) return;
+                    triggerHaptic("success");
+                    completeDay(currentChallenge.day);
+                    if (CELEBRATION_DAYS.has(currentChallenge.day)) {
+                      setTimeout(() => setShowConfetti(true), 100);
+                    }
+                  }}
+                  disabled={currentCompleted || !canCompleteMainChallenge()}
+                  haptic={currentCompleted || !canCompleteMainChallenge() ? false : "success"}
+                  innerStyle={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: currentCompleted ? ACCENT.success : "transparent",
+                    borderWidth: currentCompleted ? 0 : 2,
+                    borderColor: theme.color,
+                  }}
+                >
+                  <CheckCircle size={20} color={currentCompleted ? "#FFF" : theme.color} strokeWidth={3} />
+                </PressableScale>
+              </View>
+              {/* Tap card body to open full reflection form */}
+              {!currentCompleted && canCompleteMainChallenge() && (
+                <PressableScale
+                  onPress={() => setSelected(currentChallenge)}
+                  haptic="light"
+                  innerStyle={{
+                    marginTop: 12,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    backgroundColor: theme.color + "0D",
+                    borderWidth: 1,
+                    borderColor: theme.color + "22",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Play size={13} color={theme.color} />
+                  <Text style={{ color: theme.color, fontFamily: FONT.medium, fontSize: 13 }}>
+                    Add reflection & mood
+                  </Text>
+                </PressableScale>
+              )}
+            </GlassCard>
+          )}
 
           {/* ── Bonus challenge ── */}
           <BonusChallengeCard

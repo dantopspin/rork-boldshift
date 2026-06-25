@@ -47,6 +47,7 @@ export interface UserProgress {
   difficultyPreference: DifficultyPreference | null;
   socialFear: SocialFear | null;
   socialGoal: SocialGoal | null;
+  legacyXP: number;
 }
 
 export type NodeStatus = "completed" | "current" | "locked" | "pro-locked";
@@ -75,4 +76,5 @@ export const DEFAULT_PROGRESS: UserProgress = {
   difficultyPreference: null,
   socialFear: null,
   socialGoal: null,
+  legacyXP: 0,
 };
