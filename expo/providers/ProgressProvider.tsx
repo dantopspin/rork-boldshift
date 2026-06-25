@@ -15,6 +15,16 @@ import { getChallengesForPath } from "@/data/challenges";
 
 const STORAGE_KEY = "boldshift_progress";
 const FLAGS_KEY = "boldshift_flags";
+const CHECKSUM_SALT = 0x5a1d_b0e7; // arbitrary salt to deter casual tampering
+
+/** Fast, non-cryptographic 32-bit hash (djb2a variant) for data integrity checks. */
+function hash32(str: string): number {
+  let h = 5381 ^ CHECKSUM_SALT;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  }
+  return h >>> 0;
+}
 
 const todayStr = (): string => new Date().toISOString().split("T")[0];
 const yesterdayStr = (): string => {
@@ -31,9 +41,18 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
   useEffect(() => {
     const load = async (): Promise<void> => {
       try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored) as Partial<UserProgress>;
+        const storedRaw = await AsyncStorage.getItem(STORAGE_KEY);
+        const storedHash = await AsyncStorage.getItem(`${STORAGE_KEY}_hash`);
+        if (storedRaw && storedHash) {
+          const expectedHash = hash32(storedRaw).toString(16);
+          if (storedHash !== expectedHash) {
+            // Checksum mismatch — data was tampered with; reset to defaults
+            console.warn("Progress data integrity check failed — resetting");
+            await AsyncStorage.multiRemove([STORAGE_KEY, `${STORAGE_KEY}_hash`, FLAGS_KEY]).catch(() => {});
+            setIsLoaded(true);
+            return;
+          }
+          const parsed = JSON.parse(storedRaw) as Partial<UserProgress>;
           // Prune bonus challenge entries older than 7 days to keep the array bounded
           const cutoff = new Date();
           cutoff.setDate(cutoff.getDate() - 7);
@@ -60,12 +79,15 @@ export const [ProgressProvider, useProgress] = createContextHook(() => {
     load();
   }, []);
 
-  // Persist on change
+  // Persist on change (with integrity hash)
   useEffect(() => {
     if (isLoaded) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progress)).catch((e) =>
-        console.error("Failed to save progress", e),
-      );
+      const raw = JSON.stringify(progress);
+      const hash = hash32(raw).toString(16);
+      Promise.all([
+        AsyncStorage.setItem(STORAGE_KEY, raw),
+        AsyncStorage.setItem(`${STORAGE_KEY}_hash`, hash),
+      ]).catch((e) => console.error("Failed to save progress", e));
     }
   }, [progress, isLoaded]);
 
