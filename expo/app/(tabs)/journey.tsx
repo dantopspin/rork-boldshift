@@ -171,9 +171,9 @@ export default function Dashboard() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient colors={colors.backgroundGradient} style={{ position: "absolute", inset: 0 }} />
 
-      {/* ── Header ── */}
-      <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 }}>
+      {/* ── Fixed Header ── */}
+      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "transparent" }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
             {/* Left: greeting + path */}
             <View style={{ flex: 1, marginRight: 12 }}>
@@ -195,25 +195,32 @@ export default function Dashboard() {
               </Text>
             </View>
 
-            {/* Right: XP + streak */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <LinearGradient
-                colors={GOLD_GRADIENT}
-                style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999 }}
-              >
-                <Zap size={13} color="#FFF" />
-                <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 13 }}>{totalXP}</Text>
-              </LinearGradient>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: ACCENT.streak + "1A", borderWidth: 1, borderColor: ACCENT.streak + "44" }}>
-                <Flame size={15} color={ACCENT.streak} />
-                <Text style={{ color: ACCENT.streak, fontFamily: FONT.bold, fontSize: 13 }}>{progress.streak}</Text>
+            {/* Right: XP + streak + boost badge */}
+            <View style={{ flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <LinearGradient
+                  colors={GOLD_GRADIENT}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999 }}
+                >
+                  <Zap size={13} color="#FFF" />
+                  <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 13 }}>{totalXP}</Text>
+                </LinearGradient>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: ACCENT.streak + "1A", borderWidth: 1, borderColor: ACCENT.streak + "44" }}>
+                  <Flame size={15} color={ACCENT.streak} />
+                  <Text style={{ color: ACCENT.streak, fontFamily: FONT.bold, fontSize: 13 }}>{progress.streak}</Text>
+                </View>
               </View>
+              {difficultyMultiplier > 1.0 && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: ACCENT.success + "1A", borderWidth: 1, borderColor: ACCENT.success + "44" }}>
+                  <Zap size={10} color={ACCENT.success} />
+                  <Text style={{ color: ACCENT.success, fontFamily: FONT.bold, fontSize: 10 }}>XP Boost Active</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
-      </SafeAreaView>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 110, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 110, paddingTop: 4 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: 20, gap: 10 }}>
 
           {/* ── Streak warning ── */}
@@ -512,20 +519,39 @@ export default function Dashboard() {
                   )}
                 </PressableScale>
 
-                {/* Day nodes */}
+                {/* Day nodes with dotted connectors */}
                 {!collapsed && (
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "flex-start", paddingHorizontal: 2 }}>
-                    {week.challenges.map((c) => (
-                      <PathNode
-                        key={c.id}
-                        day={c.day}
-                        status={getNodeStatus(c.day)}
-                        isMilestone={MILESTONES.includes(c.day as (typeof MILESTONES)[number])}
-                        pathType={path}
-                        challenge={c}
-                        onPress={() => setSelected(c)}
-                        onProLockedPress={() => router.push("/paywall")}
-                      />
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 2, justifyContent: "flex-start", paddingHorizontal: 2, alignItems: "center" }}>
+                    {week.challenges.map((c, idx) => (
+                      <React.Fragment key={c.id}>
+                        <View style={{ flexDirection: "row", alignItems: "center" }}>
+                          <PathNode
+                            day={c.day}
+                            status={getNodeStatus(c.day)}
+                            isMilestone={MILESTONES.includes(c.day as (typeof MILESTONES)[number])}
+                            pathType={path}
+                            challenge={c}
+                            onPress={() => setSelected(c)}
+                            onProLockedPress={() => router.push("/paywall")}
+                          />
+                          {idx < week.challenges.length - 1 && (
+                            <View style={{ width: 10, alignItems: "center", justifyContent: "center", marginLeft: 1 }}>
+                              {[0, 1, 2].map((dot) => (
+                                <View
+                                  key={dot}
+                                  style={{
+                                    width: 2.5,
+                                    height: 2.5,
+                                    borderRadius: 1.25,
+                                    backgroundColor: theme.color + "30",
+                                    marginVertical: 2,
+                                  }}
+                                />
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      </React.Fragment>
                     ))}
                   </View>
                 )}
@@ -534,6 +560,7 @@ export default function Dashboard() {
           })}
         </View>
       </ScrollView>
+      </SafeAreaView>
 
       <TaskModal
         challenge={selected}

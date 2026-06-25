@@ -1,8 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
-import { Award, Check, Crown, Flame, Shield, Sparkles, X, Zap } from "lucide-react-native";
-import React, { useState } from "react";
-import { Text, View } from "react-native";
+import { Award, BookOpen, Check, Crown, Flame, Shield, Sparkles, X, Zap } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "@/components/AppButton";
 import PressableScale from "@/components/PressableScale";
@@ -16,6 +16,7 @@ const FEATURES = [
   { icon: Zap, text: "Access every confidence path" },
   { icon: Award, text: "Earn every achievement & badge" },
   { icon: Flame, text: "Advanced streak protection" },
+  { icon: BookOpen, text: "Lifetime access to your growth journal" },
   { icon: Sparkles, text: "Complete the full transformation" },
 ];
 
@@ -134,6 +135,7 @@ export default function Paywall() {
               secondaryPrice={weeklyEquivalent}
               subtitle="Best value"
               badge="POPULAR"
+              saveBadge="SAVE 25%"
             />
             <PlanOption
               active={plan === "pro_weekly"}
@@ -153,11 +155,8 @@ export default function Paywall() {
 
           {/* CTA — always visible, purchase fetches packages on demand if needed */}
           <View style={{ marginTop: purchaseError ? 10 : 20 }}>
-            <AppButton
+            <PulseCTA
               label={isPurchasing ? "Processing…" : packagesLoading ? "Loading…" : "Continue with Pro"}
-              size="lg"
-              variant="gold"
-              fullWidth
               onPress={handlePurchase}
               disabled={isPurchasing}
               loading={isPurchasing}
@@ -167,7 +166,7 @@ export default function Paywall() {
               <Text style={{ color: ACCENT.success, fontFamily: FONT.medium, fontSize: 11 }}>60-Day Money-Back Guarantee</Text>
             </View>
             <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 6, lineHeight: 17 }}>
-              Cancel anytime. No free trials.
+              Risk-free 60-day guarantee. Cancel anytime.
             </Text>
           </View>
 
@@ -204,7 +203,7 @@ export default function Paywall() {
   );
 }
 
-function PlanOption({ active, onPress, title, price, secondaryPrice, subtitle, badge }: { active: boolean; onPress: () => void; title: string; price: string; secondaryPrice?: string; subtitle: string; badge?: string }) {
+function PlanOption({ active, onPress, title, price, secondaryPrice, subtitle, badge, saveBadge }: { active: boolean; onPress: () => void; title: string; price: string; secondaryPrice?: string; subtitle: string; badge?: string; saveBadge?: string }) {
   const { colors } = useTheme();
   return (
     <PressableScale
@@ -228,6 +227,11 @@ function PlanOption({ active, onPress, title, price, secondaryPrice, subtitle, b
               <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 10 }}>{badge}</Text>
             </View>
           )}
+          {saveBadge && (
+            <View style={{ backgroundColor: ACCENT.success, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+              <Text style={{ color: "#FFF", fontFamily: FONT.bold, fontSize: 10 }}>{saveBadge}</Text>
+            </View>
+          )}
         </View>
         <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, marginTop: 2 }}>{subtitle}</Text>
       </View>
@@ -241,5 +245,35 @@ function PlanOption({ active, onPress, title, price, secondaryPrice, subtitle, b
         </View>
       </View>
     </PressableScale>
+  );
+}
+
+/** CTA button with a subtle pulse animation to draw the user's eye. */
+function PulseCTA({ label, onPress, disabled, loading }: { label: string; onPress: () => void; disabled?: boolean; loading?: boolean }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.03, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale: disabled ? 1 : pulse }] }}>
+      <AppButton
+        label={label}
+        size="lg"
+        variant="gold"
+        fullWidth
+        onPress={onPress}
+        disabled={disabled}
+        loading={loading}
+      />
+    </Animated.View>
   );
 }

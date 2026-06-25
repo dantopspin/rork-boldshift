@@ -7,6 +7,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Clock,
   MessageCircle,
   Mic,
   Rocket,
@@ -236,6 +237,7 @@ export default function Onboarding() {
                 onToggle={(v) => (screen === 2 ? toggleFear(v as SocialFear) : toggleGoal(v as SocialGoal))}
                 onContinue={() => goTo(screen + 1, 1)}
                 canContinue={screen === 2 ? fears.length > 0 : goals.length > 0}
+                hint="This helps us tailor your daily challenges."
               />
             )}
 
@@ -302,7 +304,7 @@ export default function Onboarding() {
               </View>
             )}
 
-            {/* Screen 5 — journey preview */}
+            {/* Screen 5 — journey preview (Roadmap) */}
             {screen === 5 && selectedPath && (
               <View style={{ flex: 1 }}>
                 <BackButton onPress={() => goTo(4, -1)} />
@@ -310,18 +312,9 @@ export default function Onboarding() {
                   Your {PATH_THEME[selectedPath].label} Journey
                 </Text>
                 <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 14, textAlign: "center", marginTop: 4, marginBottom: 20 }}>
-                  60 days of progressive growth
+                  60 days of progressive growth — 3 phases
                 </Text>
-                <View style={{ gap: 8 }}>
-                  {getWeekThemesForPath(selectedPath).slice(0, 5).map((w) => (
-                    <View key={w.week} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.cardSolid, borderWidth: 1, borderColor: colors.border }}>
-                      <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: PATH_THEME[selectedPath].color + "22", alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ color: PATH_THEME[selectedPath].color, fontFamily: FONT.bold, fontSize: 12 }}>{w.week}</Text>
-                      </View>
-                      <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14 }}>{w.name}</Text>
-                    </View>
-                  ))}
-                </View>
+                <Roadmap pathType={selectedPath} />
                 {firstChallenge && (
                   <View style={{ marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: colors.cardSolid, borderWidth: 2, borderColor: PATH_THEME[selectedPath].color + "4D" }}>
                     <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 12, marginBottom: 8 }}>Day 1 Challenge:</Text>
@@ -347,12 +340,12 @@ export default function Onboarding() {
               <View style={{ flex: 1 }}>
                 <BackButton onPress={() => goTo(5, -1)} />
                 <View style={{ alignItems: "center", marginTop: 8 }}>
-                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                    <Check size={36} color={colors.primary} />
+                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: PATH_THEME[selectedPath].color + "22", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <Check size={36} color={PATH_THEME[selectedPath].color} />
                   </View>
                   <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 24, marginBottom: 20 }}>Your Commitment</Text>
                 </View>
-                <View style={{ padding: 20, borderRadius: 18, backgroundColor: colors.cardSolid, borderWidth: 2, borderColor: PATH_THEME[selectedPath].color + "4D", marginBottom: 20 }}>
+                <View style={{ padding: 20, borderRadius: 18, backgroundColor: colors.cardSolid, borderWidth: 2, borderColor: PATH_THEME[selectedPath].color + "4D", marginBottom: 16 }}>
                   <Text style={{ color: colors.foreground, fontFamily: FONT.regular, fontSize: 16, textAlign: "center", lineHeight: 24 }}>
                     <Text style={{ color: colors.mutedForeground }}>I commit to </Text>
                     <Text style={{ fontFamily: FONT.bold }}>{PATH_THEME[selectedPath].label}</Text>
@@ -363,14 +356,45 @@ export default function Onboarding() {
                     One small step each day. No excuses.
                   </Text>
                 </View>
+                {/* Notification preview mockup */}
+                <View style={{
+                  marginBottom: 16,
+                  borderRadius: 16,
+                  borderWidth: 1.5,
+                  borderColor: colors.border,
+                  backgroundColor: colors.background,
+                  overflow: "hidden",
+                }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14 }}>
+                    <LinearGradient colors={PATH_THEME[selectedPath].gradient} style={{ width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" }}>
+                      <Rocket size={18} color="#FFF" />
+                    </LinearGradient>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 12 }}>BoldShift</Text>
+                        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 10 }}>now</Text>
+                      </View>
+                      <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 13, marginTop: 2 }} numberOfLines={1}>
+                        Time for your daily challenge
+                      </Text>
+                      <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
+                        One small step today keeps your BoldShift streak alive.
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ paddingHorizontal: 14, paddingBottom: 10, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Clock size={11} color={colors.mutedForeground} />
+                    <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 10 }}>Daily at 9:00 AM — a gentle nudge, not a demand</Text>
+                  </View>
+                </View>
                 <PressableScale
                   onPress={handleReminderToggle}
                   innerStyle={{
                     padding: 16,
                     borderRadius: 14,
                     borderWidth: 2,
-                    borderColor: reminderEnabled ? colors.primary : colors.border,
-                    backgroundColor: reminderEnabled ? colors.primary + "1A" : colors.cardSolid,
+                    borderColor: reminderEnabled ? PATH_THEME[selectedPath].color : colors.border,
+                    backgroundColor: reminderEnabled ? PATH_THEME[selectedPath].color + "1A" : colors.cardSolid,
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -378,12 +402,12 @@ export default function Onboarding() {
                   }}
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <Bell size={20} color={reminderEnabled ? colors.primary : colors.mutedForeground} />
+                    <Bell size={20} color={reminderEnabled ? PATH_THEME[selectedPath].color : colors.mutedForeground} />
                     <Text style={{ color: reminderEnabled ? colors.foreground : colors.mutedForeground, fontFamily: FONT.medium, fontSize: 14 }}>
                       Daily reminder
                     </Text>
                   </View>
-                  <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: reminderEnabled ? colors.primary : colors.muted, justifyContent: "center" }}>
+                  <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: reminderEnabled ? PATH_THEME[selectedPath].color : colors.muted, justifyContent: "center" }}>
                     <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: "#FFF", marginLeft: reminderEnabled ? 21 : 3 }} />
                   </View>
                 </PressableScale>
@@ -415,9 +439,10 @@ interface SelectStepProps<T extends string> {
   onContinue: () => void;
   canContinue: boolean;
   onBack: () => void;
+  hint?: string;
 }
 
-function SelectStep<T extends string>({ title, options, selected, onToggle, onContinue, canContinue, onBack }: SelectStepProps<T>) {
+function SelectStep<T extends string>({ title, options, selected, onToggle, onContinue, canContinue, onBack, hint }: SelectStepProps<T>) {
   const { colors } = useTheme();
   return (
     <View style={{ flex: 1 }}>
@@ -450,6 +475,11 @@ function SelectStep<T extends string>({ title, options, selected, onToggle, onCo
           );
         })}
       </View>
+      {hint && (
+        <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 14, opacity: 0.7 }}>
+          {hint}
+        </Text>
+      )}
       <View style={{ marginTop: 24 }}>
         <AppButton
           label="Continue"
@@ -460,6 +490,64 @@ function SelectStep<T extends string>({ title, options, selected, onToggle, onCo
           onPress={onContinue}
         />
       </View>
+    </View>
+  );
+}
+
+/** Visual roadmap showing the 3 phases of the 60-day journey. */
+function Roadmap({ pathType }: { pathType: PathType }) {
+  const { colors } = useTheme();
+  const theme = PATH_THEME[pathType];
+
+  const phases = [
+    { name: "Foundation", days: "Days 1–21", desc: "Build awareness and small daily habits that rewire your social reflexes." },
+    { name: "Growth", days: "Days 22–42", desc: "Step into real-world practice with guided exposure and reflection." },
+    { name: "Mastery", days: "Days 43–60", desc: "Confidence becomes second nature. Lead, connect, and speak your truth." },
+  ];
+
+  return (
+    <View style={{ gap: 0 }}>
+      {phases.map((phase, i) => (
+        <View key={phase.name} style={{ flexDirection: "row", gap: 0 }}>
+          {/* Left rail: dot + line */}
+          <View style={{ alignItems: "center", width: 28 }}>
+            <View style={{
+              width: i === 0 ? 14 : 12,
+              height: i === 0 ? 14 : 12,
+              borderRadius: 7,
+              backgroundColor: i === 0 ? theme.color : i === 1 ? theme.glow : ACCENT.milestone,
+              borderWidth: 2,
+              borderColor: colors.background,
+            }} />
+            {i < phases.length - 1 && (
+              <View style={{ width: 2, flex: 1, backgroundColor: theme.color + "33", marginVertical: 4, minHeight: 30 }} />
+            )}
+          </View>
+          {/* Phase card */}
+          <View style={{
+            flex: 1,
+            marginLeft: 10,
+            marginBottom: i < phases.length - 1 ? 14 : 0,
+            padding: 14,
+            borderRadius: 14,
+            backgroundColor: colors.cardSolid,
+            borderWidth: 1,
+            borderColor: i === 0 ? theme.color + "44" : colors.border,
+          }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <Text style={{ color: colors.foreground, fontFamily: FONT.bold, fontSize: 15 }}>
+                {phase.name}
+              </Text>
+              <Text style={{ color: theme.color, fontFamily: FONT.bold, fontSize: 11, opacity: 0.8 }}>
+                {phase.days}
+              </Text>
+            </View>
+            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, lineHeight: 18 }}>
+              {phase.desc}
+            </Text>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
