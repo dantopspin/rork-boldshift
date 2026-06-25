@@ -11,7 +11,7 @@ import {
   Rocket,
   Shield,
 } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -55,7 +55,7 @@ const PATHS: { value: PathType; icon: typeof MessageCircle }[] = [
   { value: "assertiveness", icon: Shield },
 ];
 
-const TOTAL_SCREENS = 6;
+const TOTAL_SCREENS = 7;
 
 export default function Onboarding() {
   const router = useRouter();
