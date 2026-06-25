@@ -1,9 +1,11 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { BookOpen, Home, Trophy, User } from "lucide-react-native";
-import React, { memo, useMemo } from "react";
+import React, { memo } from "react";
 import { Platform, StyleSheet, View } from "react-native";
-import { ACCENT, FONT } from "@/constants/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ACCENT, FONT, PATH_THEME } from "@/constants/theme";
+import { useProgress } from "@/providers/ProgressProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 
 const TabBarBg = memo(function TabBarBg({ isDark, colors }: { isDark: boolean; colors: { glassBg: string; glassBorder: string } }) {
@@ -17,15 +19,17 @@ const TabBarBg = memo(function TabBarBg({ isDark, colors }: { isDark: boolean; c
 
 export default function TabLayout() {
   const { colors, isDark } = useTheme();
+  const { progress } = useProgress();
+  const insets = useSafeAreaInsets();
+
+  const journeyColor = progress.selectedPath ? PATH_THEME[progress.selectedPath].color : ACCENT.introvert;
 
   const tabColors: Record<string, string> = {
-    journey: ACCENT.introvert,
+    journey: journeyColor,
     milestones: ACCENT.milestone,
     journal: colors.primary,
     profile: ACCENT.assertiveness,
   };
-
-  const memoBg = useMemo(() => () => <TabBarBg isDark={isDark} colors={colors} />, [isDark, colors]);
 
   return (
     <Tabs
@@ -42,9 +46,10 @@ export default function TabLayout() {
           elevation: 0,
           height: Platform.OS === "ios" ? 88 : 68,
           paddingTop: 8,
+          paddingBottom: insets.bottom > 0 ? insets.bottom - 4 : 0,
         },
         tabBarLabelStyle: { fontFamily: FONT.medium, fontSize: 11 },
-        tabBarBackground: memoBg,
+        tabBarBackground: () => <TabBarBg isDark={isDark} colors={colors} />,
       })}
     >
       <Tabs.Screen
