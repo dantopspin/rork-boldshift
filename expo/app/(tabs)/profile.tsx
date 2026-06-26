@@ -373,7 +373,7 @@ export default function Profile() {
               <ChevronRight size={18} color={colors.mutedForeground} />
             </PressableScale>
             <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 16 }} />
-            <PressableScale onPress={() => Linking.openURL("mailto:support@rork.app")} innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}>
+            <PressableScale onPress={() => Linking.openURL("mailto:taskalidaniyal@gmail.com")} innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}>
               <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
                 <MessageCircle size={16} color={colors.mutedForeground} />
               </View>

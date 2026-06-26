@@ -217,27 +217,27 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        {/* Backdrop */}
-        <Animated.View
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.55)",
-            opacity: backdropOpacity,
-          }}
-        >
-          <TouchableWithoutFeedback onPress={dismiss}>
-            <View style={{ flex: 1 }} />
-          </TouchableWithoutFeedback>
-        </Animated.View>
-
-        {/* Sheet */}
-        <Animated.View style={{ transform: [{ translateY }] }}>
-          <KeyboardAvoidingView
-            behavior="padding"
-            keyboardVerticalOffset={64}
+      <KeyboardAvoidingView
+        behavior="padding"
+        style={{ flex: 1 }}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          {/* Backdrop */}
+          <Animated.View
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundColor: "rgba(0,0,0,0.55)",
+              opacity: backdropOpacity,
+            }}
           >
+            <TouchableWithoutFeedback onPress={dismiss}>
+              <View style={{ flex: 1 }} />
+            </TouchableWithoutFeedback>
+          </Animated.View>
+
+          {/* Sheet */}
+          <Animated.View style={{ transform: [{ translateY }] }}>
             <View style={{ backgroundColor: colors.cardSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
               <SafeAreaView edges={["bottom"]}>
                 {/* Drag handle */}
@@ -525,9 +525,9 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                 </ScrollView>
               </SafeAreaView>
             </View>
-          </KeyboardAvoidingView>
         </Animated.View>
       </View>
+    </KeyboardAvoidingView>
     </Modal>
   );
 }
