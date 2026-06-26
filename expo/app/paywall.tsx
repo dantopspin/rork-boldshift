@@ -161,12 +161,8 @@ export default function Paywall() {
               disabled={isPurchasing}
               loading={isPurchasing}
             />
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10 }}>
-              <Shield size={12} color={ACCENT.success} />
-              <Text style={{ color: ACCENT.success, fontFamily: FONT.medium, fontSize: 11 }}>60-Day Money-Back Guarantee</Text>
-            </View>
-            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 6, lineHeight: 17 }}>
-              Risk-free 60-day guarantee. Cancel anytime.
+            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.regular, fontSize: 12, textAlign: "center", marginTop: 10, lineHeight: 17 }}>
+              Start your journey. Cancel anytime.
             </Text>
           </View>
 

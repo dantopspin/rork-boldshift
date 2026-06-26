@@ -18,7 +18,7 @@ import {
   TrendingUp,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import GlassCard from "@/components/GlassCard";
 import PressableScale from "@/components/PressableScale";
@@ -370,6 +370,14 @@ export default function Profile() {
                 <FileText size={16} color={colors.mutedForeground} />
               </View>
               <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14, flex: 1 }}>Terms of Service</Text>
+              <ChevronRight size={18} color={colors.mutedForeground} />
+            </PressableScale>
+            <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 16 }} />
+            <PressableScale onPress={() => Linking.openURL("mailto:support@rork.app")} innerStyle={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                <MessageCircle size={16} color={colors.mutedForeground} />
+              </View>
+              <Text style={{ color: colors.foreground, fontFamily: FONT.medium, fontSize: 14, flex: 1 }}>Contact Support</Text>
               <ChevronRight size={18} color={colors.mutedForeground} />
             </PressableScale>
           </GlassCard>

@@ -12,6 +12,7 @@ export default function TermsOfService() {
         { heading: "Subscriptions", body: "BoldShift Pro unlocks the full 60-day journey and additional features. Subscription status is stored locally on your device." },
         { heading: "Your Responsibility", body: "You agree to use BoldShift responsibly and to respect others while completing social challenges. You complete all challenges at your own discretion." },
         { heading: "Changes", body: "We may update these terms from time to time. Continued use of the app means you accept the latest version." },
+        { heading: "Standard EULA", body: "This app is licensed under Apple's Standard End User License Agreement, available at https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" },
       ]}
     />
   );
