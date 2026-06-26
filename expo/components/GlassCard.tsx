@@ -50,7 +50,7 @@ export default function GlassCard({ children, style, elevated, radius = RADIUS.l
 
   return (
     <View style={[containerStyle, style]}>
-      <BlurView intensity={15} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+      <BlurView intensity={10} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassBg }]} />
       {children}
     </View>

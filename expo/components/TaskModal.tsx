@@ -71,43 +71,9 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
-  const keyboardY = useRef(new Animated.Value(0)).current;
 
   // Guard against entrance animation re-firing while the sheet is dismissing
   const closingRef = useRef<boolean>(false);
-
-  // Track keyboard height
-  useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
-        Animated.timing(keyboardY, {
-          toValue: -e.endCoordinates.height,
-          duration: 250,
-          useNativeDriver: true,
-        }).start();
-        setTimeout(() => {
-          scrollRef.current?.scrollToEnd({ animated: true });
-        }, 180);
-      },
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => {
-        setKeyboardHeight(0);
-        Animated.timing(keyboardY, {
-          toValue: 0,
-          duration: 220,
-          useNativeDriver: true,
-        }).start();
-      },
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, [keyboardY]);
 
   // Entrance animation — skip if closing
   useEffect(() => {
@@ -249,10 +215,8 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
 
   const blocked = !canComplete && !isCompleted;
 
-  const sheetTranslate = Animated.add(translateY, keyboardY);
-
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={dismiss}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={dismiss}>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
         {/* Backdrop */}
         <Animated.View
@@ -269,10 +233,10 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
         </Animated.View>
 
         {/* Sheet */}
-        <Animated.View style={{ transform: [{ translateY: sheetTranslate }] }}>
+        <Animated.View style={{ transform: [{ translateY }] }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+            behavior="padding"
+            keyboardVerticalOffset={64}
           >
             <View style={{ backgroundColor: colors.cardSolid, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
               <SafeAreaView edges={["bottom"]}>
@@ -290,7 +254,8 @@ export default function TaskModal({ challenge, visible, isCompleted, canComplete
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                   scrollEventThrottle={16}
-                  contentInsetAdjustmentBehavior="automatic"
+                  automaticallyAdjustKeyboardInsets={true}
+                  keyboardDismissMode="on-drag"
                   contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 20, gap: 12 }}
                 >
                   {/* Header row */}
