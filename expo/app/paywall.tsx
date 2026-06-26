@@ -2,7 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
 import { Award, BookOpen, Check, Crown, Flame, Shield, Sparkles, X, Zap } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Text, View } from "react-native";
+import { Animated, Easing, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "@/components/AppButton";
 import PressableScale from "@/components/PressableScale";
@@ -96,8 +96,12 @@ export default function Paywall() {
           </PressableScale>
         </View>
 
-        {/* Content */}
-        <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: "center" }}>
+        {/* Scrollable content */}
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 }}
+        >
           {/* Header */}
           <View style={{ alignItems: "center", marginBottom: 24 }}>
             <LinearGradient colors={GOLD_GRADIENT} style={{ width: 64, height: 64, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
@@ -165,20 +169,20 @@ export default function Paywall() {
               Start your journey. Cancel anytime.
             </Text>
           </View>
+        </ScrollView>
 
-          {/* Restore purchases */}
-          <View style={{ marginTop: 14, alignItems: "center" }}>
-            <PressableScale
-              onPress={handleRestore}
-              haptic="light"
-              disabled={isRestoring}
-              innerStyle={{ paddingVertical: 8, paddingHorizontal: 16 }}
-            >
-              <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>
-                {isRestoring ? "Restoring…" : "Restore Purchases"}
-              </Text>
-            </PressableScale>
-          </View>
+        {/* Restore purchases — evenly between CTA text and legal */}
+        <View style={{ paddingVertical: 16, alignItems: "center" }}>
+          <PressableScale
+            onPress={handleRestore}
+            haptic="light"
+            disabled={isRestoring}
+            innerStyle={{ paddingVertical: 8, paddingHorizontal: 16 }}
+          >
+            <Text style={{ color: colors.mutedForeground, fontFamily: FONT.medium, fontSize: 13 }}>
+              {isRestoring ? "Restoring…" : "Restore Purchases"}
+            </Text>
+          </PressableScale>
         </View>
 
         {/* Legal */}
